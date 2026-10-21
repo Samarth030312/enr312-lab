@@ -2,8 +2,9 @@
 
 Hardware: Arduino Uno, Robokits **RMCS-2303** drive, Robokits **RMCS-5032** motor (the pair
 supplied together), 12 V DC supply. Firmware: `dc_motor/firmware/motor_controller/`.
-Status: wired and powered 2026-10-11. **Encoder colours corrected the same day** (red → pin 11,
-orange → pin 10) after a runaway; all other connections verified working (Modbus, slave id 7).
+Status: **verified on the lab rig 2026-10-11** (20 runs, speed and position, correct direction).
+The lab motor's cable does **not** use the datasheet colours; the table gives both. Final fix of the
+direction: the two thin motor leads swapped at pins 14/15 (photo 13:08).
 
 ## 1. Pin plan
 
@@ -21,22 +22,27 @@ SoftwareSerial switches interrupts off for ~1 ms per byte, which corrupts comman
 arriving at 115200 baud — including STOP. AltSoftSerial keeps interrupts on but is fixed to D8/D9
 on the Uno. (D10 cannot be used for PWM while AltSoftSerial is active.)
 
-| Drive pin | Connects to | Wire colour (motor) |
-|---|---|---|
-| 8 GND | motor encoder GND | **Black** |
-| 9 +5 V | motor encoder VCC | **Brown** |
-| 10 ENC_B | motor encoder B | **Orange** (EncB on the RMCS-5032 sheet) |
-| 11 ENC_A | motor encoder A | **Red** (EncA on the RMCS-5032 sheet) |
-| 14 Motor− | motor | **Yellow** |
-| 15 Motor+ | motor | **Green** |
-| 16 VDD | supply **+12 V** | red supply lead |
-| 17 GND | supply **0 V** | black supply lead |
+| Drive pin | Function | **Lab motor cable (verified)** | RMCS-5032 datasheet colour |
+|---|---|---|---|
+| 8 GND | encoder GND | **Green** | Black |
+| 9 +5 V | encoder VCC | **Blue** | Brown |
+| 10 ENC_B | encoder B | **Yellow** | Orange |
+| 11 ENC_A | encoder A | **White** | Red |
+| 14 Motor− | motor lead | **Black (thin)** | Yellow |
+| 15 Motor+ | motor lead | **Red (thin)** | Green |
+| 16 VDD | supply + (11.2 V battery) | thick red | — |
+| 17 GND | supply − | thick black | — |
+
+If a different motor or cable is used: wire encoder +5 V/GND first, then A/B, then the motor leads;
+if the first run reports `runaway: wrong way`, swap **one** pair only (the two motor leads at
+14/15, or A/B at 10/11), never both.
 
 **Correction 2026-10-11 (conflict C-M3).** The drive manual's p.5 diagram is drawn for a
 *generic* Rhino motor (red = ENC_B, orange = ENC_A). The **RMCS-5032's own sheet** (SRC-003) says
 **red = EncA, orange = EncB**, and the actual part's datasheet wins. The first version of this
 guide followed the drive manual; on the rig that crossed A/B and the drive's loops ran away
-(`docs/safety/INCIDENT_2026-10-11.md`). The table above is the corrected mapping.
+(`docs/safety/INCIDENT_2026-10-11.md`). The lab's cable then turned out to use neither scheme
+(green/blue/yellow/white encoder, thin red/black motor leads); the table above is what works on the rig.
 **Wire by pin number on the drive silkscreen, never by the row alignment of the manual's p.5
 tables** (conflict C-M4).
 
@@ -51,15 +57,15 @@ tables** (conflict C-M4).
               |          D8 |<--------------------| 3 TXD                        |
               |         GND |---------------------| 1 GND                        |
               |          D4 |---[STOP]---GND       |                              |
-              +-------------+                      | 8 GND  ---- black  ---+      |
-                                                    | 9 +5V  ---- brown  ---+      |
+              +-------------+                      | 8 GND  ---- green  ---+      |
+                                                    | 9 +5V  ---- blue   ---+      |
    12 V supply  (+) --- fuse 5 A T ---- switch -----| 16 VDD                |      |
                 (-) --------------------------------| 17 GND        encoder|  RMCS-5032
-                                                    | 10 ENC_B --- orange---+  motor
-                                                    | 11 ENC_A --- red   ---+  (1:100)
-                                                    | 14 M-   ---- yellow ---+
-                                                    | 15 M+   ---- green  ---+
-                                                    | JP1-JP3: leave open -> ID 11
+                                                    | 10 ENC_B --- yellow---+  motor
+                                                    | 11 ENC_A --- white ---+  (1:100)
+                                                    | 14 M-   ---- black (thin)
+                                                    | 15 M+   ---- red (thin)  
+                                                    | lab drive answers as ID 7  
                                                     +------------------------------+
 ```
 
@@ -163,7 +169,7 @@ Motor clamped; output shaft free (a tape flag on it to see rotation).
    stops and goes limp. Then test the **D4 button** and the **12 V switch**.
 5. Watchdog: during a run, close the MATLAB app window. The motor must stop within ~1 s.
 6. Direction: with a positive speed command the measured speed must be positive. If the app shows
-   `runaway: wrong way`, red and orange are on the wrong pins (red must be on 11, orange on 10).
+   `runaway: wrong way`, swap ONE pair (thin motor leads at 14/15, or yellow/white at 10/11).
 7. **Live driving:** Run length **Until Stop (hardware)**, then **Start**, then move the **Setpoint**
    slider: the new rpm (−150 … +150, negative = reverse) goes to the motor immediately.
 8. **Hardware experiments** (section in the app): pick one of the 10 (MOTOR-02 … 07), read its

@@ -27,7 +27,8 @@ Source: **SRC-001** (ENR312 course file, Monsoon 2025-26). Page numbers are the 
 | R-M8 | Assignment 5: realistic simulation, screenshots of inputs/outputs, impress the TA (p.14) | `MotorControlApp` (animated rig + live plots + recording) | Screenshots, recordings | `results/evidence/simulation_runs/dc_motor/*/simulation.mp4` | DONE (simulation) |
 | R-M9 | Real DC motor open/closed-loop PID implementation (week 5) | Firmware + hardware mode of the app | MOTOR-03 … 07 | | NOT STARTED |
 | R-M10 | Compare real vs simulated position/speed (week 11) | Hardware mode overlays the simulation prediction; MOTOR-08 | MOTOR-08 | | NOT STARTED |
-| R-M11 | Answer Section 2 questions 1–10 (p.34) | `docs/experiments/dc_motor/QUESTIONS.md` | Review | | NOT STARTED (Q2, Q3, Q6, Q8 need the real set-up) |
+| R-M11 | Answer Section 2 questions 1–10 (p.34) | `docs/experiments/dc_motor/COURSE_QUESTIONS.md` | Review | | DONE (reference answers for this rig) |
+| R-M12 | MOTOR handout Section 3, S3-1 … S3-12 (SRC-013) | `motor_course_questions.m`, `enr312_motor_identified.slx`, "Course S3-x" hardware experiments | `test_motor_identified`, firmware host test | `COURSE_SIM_RESULTS.md` | SIM/analysis DONE; 6 hardware runs PENDING |
 
 ## 3. Conflicts between the course text and the hardware
 

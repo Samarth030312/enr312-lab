@@ -1,0 +1,443 @@
+{
+  "cpr_out": 5200,
+  "deg_per_count": 0.069230769230769235,
+  "speed_res_rpm": [
+    1.1538461538461537,
+    0.23076923076923078,
+    0.11538461538461539
+  ],
+  "drive_quantum_rpm": 4.615,
+  "drive_window_ms": 10.000833402783565,
+  "static_map_sim": {
+    "cmd": [
+      0,
+      10,
+      20,
+      30,
+      40,
+      50,
+      60,
+      70,
+      80,
+      90,
+      100,
+      110,
+      120,
+      130,
+      140,
+      150,
+      160,
+      170,
+      180
+    ],
+    "speed": [
+      0,
+      10.000000000000002,
+      20.000000000000004,
+      30.000000000000004,
+      40.000000000000007,
+      50.000000000000007,
+      60.000000000000007,
+      70.000000000000014,
+      80.000000000000014,
+      90.000000000000014,
+      100.00000000000001,
+      110.00000000000001,
+      120.00000000000001,
+      130.00000000000003,
+      140.00000000000003,
+      150.00000000000003,
+      160.00000000000003,
+      167.99999999999974,
+      167.99999999999974
+    ]
+  },
+  "free_speed_sim": 167.99999999999974,
+  "free_speed_hw": 166,
+  "fopdt": {
+    "K_mean": 1.0246331883827733,
+    "K_std": 0.0558465027556791,
+    "tau_big_mean": 0.343943366815495,
+    "theta_big_mean": 0.25643971830231482,
+    "tau_20_mean": 0.12359060133469271,
+    "theta_20_mean": 0.23319529393181795
+  },
+  "identified": {
+    "K": 1.0002442885948692,
+    "tau": 4.7234170219585404E-5,
+    "theta": 0,
+    "acc": 53.442321157855289,
+    "dz": 0,
+    "qSpd": 4.615,
+    "backlash": 0,
+    "sensorAtLoad": false
+  },
+  "identified_rmse": 2.3424490581646551,
+  "quant_noise_rpm": 1.3322357461550616,
+  "course_model": {
+    "K": 1,
+    "tau": 0.71727539062499956,
+    "note": "first-order fit (K fixed at the measured 1.0) to the identified 0->60 rpm step; the course procedure"
+  },
+  "posP_max_abs_error_deg": 0.559076923076923,
+  "modbus_ms": {
+    "readSpeed": 33.333333333333336,
+    "readPos": 37.5,
+    "writeSpeed": 35.416666666666664
+  },
+  "simVsHw": [
+    {
+      "run": "MOTOR-05-HW-20261011-132405",
+      "loop": "speed",
+      "ctrl": "P",
+      "Kp": 0.2,
+      "Ki": 0,
+      "rmse": 2.2094043388360429,
+      "rmse_pct_of_setpoint": 3.6823405647267382
+    },
+    {
+      "run": "MOTOR-05-HW-20261011-132415",
+      "loop": "speed",
+      "ctrl": "P",
+      "Kp": 0.5,
+      "Ki": 0,
+      "rmse": 3.2430255334162283,
+      "rmse_pct_of_setpoint": 5.4050425556937141
+    },
+    {
+      "run": "MOTOR-05-HW-20261011-132424",
+      "loop": "speed",
+      "ctrl": "P",
+      "Kp": 0.8,
+      "Ki": 0,
+      "rmse": 3.8217720018031218,
+      "rmse_pct_of_setpoint": 6.3696200030052035
+    },
+    {
+      "run": "MOTOR-07-HW-20261011-132747",
+      "loop": "speed",
+      "ctrl": "PI",
+      "Kp": 0.3,
+      "Ki": 1.5,
+      "rmse": 2.2248485990421436,
+      "rmse_pct_of_setpoint": 3.708080998403573
+    },
+    {
+      "run": "MOTOR-07-HW-20261011-133343",
+      "loop": "speed",
+      "ctrl": "PI",
+      "Kp": 0.3,
+      "Ki": 1.5,
+      "rmse": 2.2575006497614711,
+      "rmse_pct_of_setpoint": 3.7625010829357852
+    },
+    {
+      "run": "MOTOR-03-HW-20261011-132327",
+      "loop": "speed",
+      "ctrl": "PI",
+      "Kp": 0.3,
+      "Ki": 1.5,
+      "rmse": 3.1408843002914417,
+      "rmse_pct_of_setpoint": 3.1408843002914413
+    },
+    {
+      "run": "MOTOR-03-HW-20261011-133011",
+      "loop": "speed",
+      "ctrl": "PI",
+      "Kp": 0.3,
+      "Ki": 1.5,
+      "rmse": 2.8841018637707752,
+      "rmse_pct_of_setpoint": 2.8841018637707752
+    },
+    {
+      "run": "MOTOR-03-HW-20261011-133713",
+      "loop": "speed",
+      "ctrl": "PI",
+      "Kp": 0.3,
+      "Ki": 1.5,
+      "rmse": 3.21896133183323,
+      "rmse_pct_of_setpoint": 3.21896133183323
+    },
+    {
+      "run": "MOTOR-04-HW-20261011-132143",
+      "loop": "position",
+      "ctrl": "P",
+      "Kp": 0.3,
+      "Ki": 0,
+      "rmse": 16.639692363743787,
+      "rmse_pct_of_setpoint": 4.622136767706607
+    },
+    {
+      "run": "MOTOR-04-HW-20261011-133810",
+      "loop": "position",
+      "ctrl": "P",
+      "Kp": 0.3,
+      "Ki": 0,
+      "rmse": 17.975578139667995,
+      "rmse_pct_of_setpoint": 4.9932161499077763
+    },
+    {
+      "run": "MOTOR-05-HW-20261011-133840",
+      "loop": "position",
+      "ctrl": "P",
+      "Kp": 0.2,
+      "Ki": 0,
+      "rmse": 2.1372998208502638,
+      "rmse_pct_of_setpoint": 2.3747775787225156
+    },
+    {
+      "run": "MOTOR-05-HW-20261011-133849",
+      "loop": "position",
+      "ctrl": "P",
+      "Kp": 0.3,
+      "Ki": 0,
+      "rmse": 3.0554491201755778,
+      "rmse_pct_of_setpoint": 3.3949434668617533
+    },
+    {
+      "run": "MOTOR-05-HW-20261011-133858",
+      "loop": "position",
+      "ctrl": "P",
+      "Kp": 0.5,
+      "Ki": 0,
+      "rmse": 7.7731356803331462,
+      "rmse_pct_of_setpoint": 8.6368174225923848
+    },
+    {
+      "run": "MOTOR-06-HW-20261011-132656",
+      "loop": "position",
+      "ctrl": "I",
+      "Kp": 0,
+      "Ki": 0.1,
+      "rmse": 7.339464575339977,
+      "rmse_pct_of_setpoint": 16.309921278533281
+    }
+  ],
+  "inertia": [
+    {
+      "plant": "rig",
+      "loop": "speed",
+      "ctrl": "P",
+      "J_scale": 1,
+      "overshoot_pct": 0,
+      "t_settle_s": null,
+      "ess_pct": 66.666666666666671
+    },
+    {
+      "plant": "rig",
+      "loop": "speed",
+      "ctrl": "P",
+      "J_scale": 1.5,
+      "overshoot_pct": 0,
+      "t_settle_s": null,
+      "ess_pct": 66.666666666666671
+    },
+    {
+      "plant": "bare",
+      "loop": "speed",
+      "ctrl": "P",
+      "J_scale": 1,
+      "overshoot_pct": 0,
+      "t_settle_s": null,
+      "ess_pct": 57.142857142836
+    },
+    {
+      "plant": "bare",
+      "loop": "speed",
+      "ctrl": "P",
+      "J_scale": 1.5,
+      "overshoot_pct": 0,
+      "t_settle_s": null,
+      "ess_pct": 57.142857142888239
+    },
+    {
+      "plant": "rig",
+      "loop": "speed",
+      "ctrl": "I",
+      "J_scale": 1,
+      "overshoot_pct": 0,
+      "t_settle_s": 3.576,
+      "ess_pct": 0.00061964174310702447
+    },
+    {
+      "plant": "rig",
+      "loop": "speed",
+      "ctrl": "I",
+      "J_scale": 1.5,
+      "overshoot_pct": 0,
+      "t_settle_s": 3.5789999999999997,
+      "ess_pct": 0.00063752239416459133
+    },
+    {
+      "plant": "bare",
+      "loop": "speed",
+      "ctrl": "I",
+      "J_scale": 1,
+      "overshoot_pct": 11.653115908537259,
+      "t_settle_s": 0.314,
+      "ess_pct": 1.000017846308765E-10
+    },
+    {
+      "plant": "bare",
+      "loop": "speed",
+      "ctrl": "I",
+      "J_scale": 1.5,
+      "overshoot_pct": 19.554926299324205,
+      "t_settle_s": 0.548,
+      "ess_pct": -2.4272139853565022E-11
+    },
+    {
+      "plant": "rig",
+      "loop": "speed",
+      "ctrl": "PI",
+      "J_scale": 1,
+      "overshoot_pct": 9.2128107818026059,
+      "t_settle_s": 2.327,
+      "ess_pct": -5.20883304252114E-5
+    },
+    {
+      "plant": "rig",
+      "loop": "speed",
+      "ctrl": "PI",
+      "J_scale": 1.5,
+      "overshoot_pct": 9.0414217392079,
+      "t_settle_s": 2.295,
+      "ess_pct": -5.1326315440765789E-5
+    },
+    {
+      "plant": "bare",
+      "loop": "speed",
+      "ctrl": "PI",
+      "J_scale": 1,
+      "overshoot_pct": 3.3062441673337162E-11,
+      "t_settle_s": 0.267,
+      "ess_pct": 9.9589669844135642E-11
+    },
+    {
+      "plant": "bare",
+      "loop": "speed",
+      "ctrl": "PI",
+      "J_scale": 1.5,
+      "overshoot_pct": 0.73304404057277228,
+      "t_settle_s": 0.182,
+      "ess_pct": -2.3717916519672144E-11
+    },
+    {
+      "plant": "rig",
+      "loop": "position",
+      "ctrl": "P",
+      "J_scale": 1,
+      "overshoot_pct": 1.9350384500142148,
+      "t_settle_s": 1.2810000000000001,
+      "ess_pct": -9.4739031434680032E-13
+    },
+    {
+      "plant": "rig",
+      "loop": "position",
+      "ctrl": "P",
+      "J_scale": 1.5,
+      "overshoot_pct": 1.7198027361879253,
+      "t_settle_s": 1.2830000000000001,
+      "ess_pct": -1.1842378929335002E-12
+    },
+    {
+      "plant": "bare",
+      "loop": "position",
+      "ctrl": "P",
+      "J_scale": 1,
+      "overshoot_pct": 18.349511830818919,
+      "t_settle_s": 0.37600000000000006,
+      "ess_pct": -3.1579677144893343E-14
+    },
+    {
+      "plant": "bare",
+      "loop": "position",
+      "ctrl": "P",
+      "J_scale": 1.5,
+      "overshoot_pct": 25.172343883819124,
+      "t_settle_s": 0.58800000000000008,
+      "ess_pct": -3.1579677144893343E-14
+    }
+  ],
+  "torque_margin": 21.723261772917219,
+  "Ionly": {
+    "Ki": [
+      0.5,
+      1,
+      2,
+      4
+    ],
+    "zeta": [
+      0.83491456403350162,
+      0.590373749939499,
+      0.41745728201675081,
+      0.29518687496974949
+    ],
+    "wn": [
+      0.83491456403350162,
+      1.180747499878998,
+      1.6698291280670032,
+      2.3614949997579959
+    ],
+    "os_theory": [
+      0.85166528049580581,
+      10.046838729745225,
+      23.615784042322748,
+      37.885276059665429
+    ],
+    "os_model": [
+      0,
+      0.38461538461537731,
+      0.38461538461537731,
+      55
+    ]
+  },
+  "PIdesign": {
+    "tau": 0.71727539062499956,
+    "zeta": 0.7,
+    "wn": 2,
+    "Kp": 1.0083710937499988,
+    "Ki": 2.8691015624999983,
+    "os_pred_pct": 4.5987910260267748,
+    "ts_pred_s": 2.8571428571428572,
+    "os_model_pct": 29.230769230769198,
+    "os_firstorder_sim_pct": 9.5692616339930225
+  },
+  "deadzoneP": [
+    {
+      "Kp": 0.1,
+      "final_error_deg": 10,
+      "predicted_d_over_Kp": 10
+    },
+    {
+      "Kp": 0.3,
+      "final_error_deg": 3.2846153846153845,
+      "predicted_d_over_Kp": 3.3333333333333335
+    },
+    {
+      "Kp": 1,
+      "final_error_deg": 0.44615384615384635,
+      "predicted_d_over_Kp": 1
+    }
+  ],
+  "backlash": {
+    "motor": {
+      "pp_last20s": 0,
+      "mean_err_deg": -1.0922424938471629
+    },
+    "load": {
+      "pp_last20s": 1.7764837085561354,
+      "mean_err_deg": 0.051876877657790033
+    }
+  },
+  "windup": {
+    "clamping": {
+      "recovery_s": 0.5,
+      "min_after_drop": 29.884615384615387
+    },
+    "none": {
+      "recovery_s": 10.299999999999997,
+      "min_after_drop": 29.884615384615387
+    }
+  }
+}

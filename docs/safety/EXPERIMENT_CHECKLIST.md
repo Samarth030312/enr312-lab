@@ -8,7 +8,7 @@ each session. Do not power the motor without the operator's approval.
 - [ ] Supply label read: ____ V, ____ A (OI-M1). 12 V preferred (C-M6).
 - [ ] Supply polarity to drive pin 16 (VDD +) and pin 17 (GND) checked with a multimeter.
 - [ ] Motor wires by **function**, not by table row: Yellow M− → pin 14, Green M+ → pin 15,
-      Black → 8, Brown → 9, **Orange → 10, Red → 11** (RMCS-5032 sheet; NOT the drive manual's generic diagram). Photograph.
+      Lab cable: **Green → 8, Blue → 9, Yellow → 10, White → 11, thin Black → 14, thin Red → 15** (verified 2026-10-11; datasheet colours differ, see DC_MOTOR_WIRING.md). Photograph.
 - [ ] Encoder supply is the drive's +5 V (pin 9), not the Uno's and not 12 V.
 - [ ] Uno ↔ drive: GND–GND, **D9 → drive RXD (pin 2), D8 ← drive TXD (pin 3)** (not the vendor's D2/D3). Nothing else.
 - [ ] No connection between the 12/24 V supply and any Uno pin.

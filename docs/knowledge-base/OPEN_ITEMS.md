@@ -23,7 +23,7 @@ quote). Record how it was closed.
 | OI-M2 | Drive slave ID on the actual unit | Every Modbus frame | **Slave id 7** found by the firmware's scan (session log hw_session_20261011-120813.log). Jumper state still to photograph | **CLOSED 2026-10-11** |
 | OI-M3 | UART framing | Communication | Vendor library RMCS2303drive v1.0 (SRC-012): 9600 baud, SoftwareSerial (8N1 only) | **CLOSED 2026-10-09** |
 | OI-M4 | Register addressing on the wire | Every Modbus frame | Vendor library: documented numbers go on the wire as-is (2, 14, 24); FC 06 write / FC 03 read; LRC = two's complement; **position feedback = 2 registers from 20, low word first** (manual says 20/22) | **CLOSED 2026-10-09** |
-| OI-M5 | Units of the acceleration register (12) | Speed ramp model | Step test in MOTOR-02 | OPEN |
+| OI-M5 | Units of the acceleration register (12) | Speed ramp model | Step test in MOTOR-02 | **RESOLVED 2026-10-21**: register 5000 → fitted ramp 53.4 output rpm/s (= 5340 base rpm/s) on 4 open-loop runs: units are base rpm per second (COURSE_SIM_RESULTS S3-4) |
 | OI-M6 | Signedness of speed feedback (register 24) | Reverse speed reading | Run reverse in MOTOR-02 | OPEN |
 | OI-M7 | Whether PPG / PIG / VFFG act in speed mode | ED-M1 option A | Vary gains in Mode 1 on hardware | OPEN |
 | OI-M8 | Real Modbus cycle time on the Uno | Outer-loop Ts (ED-M1) | Timestamp a loop of reads in MOTOR-02 | OPEN |

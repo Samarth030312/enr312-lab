@@ -1,0 +1,46 @@
+{
+  "run_id": "MOTOR-COURSE-SIM-20261021-123551",
+  "data_class": "SIMULATION + analysis of HARDWARE runs",
+  "hardware_runs": {
+    "ol": [
+      "MOTOR-02-HW-20261011-131457",
+      "MOTOR-02-HW-20261011-131818",
+      "MOTOR-02-HW-20261011-132536",
+      "MOTOR-02-HW-20261011-133631"
+    ],
+    "spdP": [
+      "MOTOR-05-HW-20261011-132405",
+      "MOTOR-05-HW-20261011-132415",
+      "MOTOR-05-HW-20261011-132424"
+    ],
+    "spdPI": [
+      "MOTOR-07-HW-20261011-132747",
+      "MOTOR-07-HW-20261011-133343",
+      "MOTOR-03-HW-20261011-132327",
+      "MOTOR-03-HW-20261011-133011",
+      "MOTOR-03-HW-20261011-133713"
+    ],
+    "posP": [
+      "MOTOR-04-HW-20261011-132143",
+      "MOTOR-04-HW-20261011-133810",
+      "MOTOR-05-HW-20261011-133840",
+      "MOTOR-05-HW-20261011-133849",
+      "MOTOR-05-HW-20261011-133858"
+    ],
+    "posI": [
+      "MOTOR-06-HW-20261011-132656"
+    ]
+  },
+  "matlab": "26.1.0.3346908 (R2026a) Update 5",
+  "simulink": "26.1",
+  "identified_model": {
+    "K": 1.0002442885948692,
+    "tau": 4.7234170219585404E-5,
+    "theta": 0,
+    "acc": 53.442321157855289,
+    "dz": 0,
+    "qSpd": 4.615,
+    "backlash": 0,
+    "sensorAtLoad": false
+  }
+}

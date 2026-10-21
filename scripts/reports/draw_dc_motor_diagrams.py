@@ -18,7 +18,7 @@ OUT = ROOT / "docs" / "wiring" / "figures"
 OUT.mkdir(parents=True, exist_ok=True)
 
 NAVY, GREY, RED, BLUE, GREEN = "#17294a", "#6b6f76", "#c62e29", "#2962c8", "#21974f"
-WIRE = {"black": "#111111", "brown": "#7b4a12", "red": "#d62020", "orange": "#f08c00",
+WIRE = {"black": "#111111", "brown": "#7b4a12", "red": "#d62020", "orange": "#f08c00", "white": "#b8b8b8",
         "yellow": "#e0c000", "green": "#1f9a3a", "blue": BLUE, "grey": GREY, "purple": "#6a3fa8"}
 
 
@@ -72,7 +72,7 @@ def circuit():
     ax.text(8.3, 9.0, "to Uno GND", fontsize=8, color=GREY)
 
     # ---------------- Drive
-    box(ax, 13, 3, 7.5, 15, "RMCS-2303 drive", "jumpers JP1-JP3 open -> slave id 11", fc="#f1eefa", ec=NAVY)
+    box(ax, 13, 3, 7.5, 15, "RMCS-2303 drive", "lab drive answers as slave id 7 (firmware scans 11, 7, 1-6)", fc="#f1eefa", ec=NAVY)
     left = {"2  RXD": 15.0, "3  TXD": 13.8, "1  GND": 12.6}
     for k, y in left.items():
         pin(ax, 13, y, k, "l")
@@ -88,15 +88,15 @@ def circuit():
 
     # ---------------- Motor
     box(ax, 26, 8, 6.8, 9.5, "RMCS-5032 motor", "12 V, 180 rpm out, 15 kgf.cm rated", fc="#fff4e5", ec="#b06a00")
-    mpins = {"Brown  +5 V": 15.6, "Black  GND": 14.6, "Red    EncA": 13.6, "Orange EncB": 12.6,
-             "Green  Motor+": 10.6, "Yellow Motor-": 9.6}
+    mpins = {"Blue   +5 V": 15.6, "Green  GND": 14.6, "White  EncA": 13.6, "Yellow EncB": 12.6,
+             "Red (thin) Motor+": 10.6, "Black (thin) Motor-": 9.6}
     for k, y in mpins.items():
         pin(ax, 26, y, k, "l")
-    colors = ["brown", "black", "red", "orange", "green", "yellow"]
+    colors = ["blue", "green", "white", "yellow", "red", "black"]
     for (k, y), c in zip(mpins.items(), colors):
         wire(ax, [(20.5, y), (26, y)], WIRE[c])
-    ax.text(29.4, 8.45, "Encoder colours from the RMCS-5032 sheet:\nRED = EncA -> pin 11, ORANGE = EncB -> pin 10.\n"
-                        "(The drive manual's generic diagram is reversed.)", ha="center", fontsize=7.8, color=RED)
+    ax.text(29.4, 8.45, "Colours of the LAB motor cable (verified 2026-10-11).\nDatasheet colours differ: wire by pin function.\n"
+                        "Wrong direction? swap ONE pair (14/15 or 10/11).", ha="center", fontsize=7.8, color=RED)
 
     # ---------------- Supply
     box(ax, 26, 1.0, 6.8, 5.6, "12 V DC supply", ">= 5 A, or bench PSU\n12.0 V, current limit 4 A", fc="#fdecec", ec=RED)
@@ -115,7 +115,7 @@ def circuit():
     ax.text(1, 4.6, "Signal wires: jumper wires, < 30 cm, twisted with their GND if possible.", fontsize=9)
     ax.text(1, 3.9, "Power-up order: Uno on USB first, then switch on 12 V. Power-down: 12 V off first.", fontsize=9)
     ax.text(1, 3.2, "Firmware: dc_motor/firmware/motor_controller   Upload: scripts/setup/upload motor", fontsize=9, family="monospace")
-    ax.text(1, 2.5, "Pins chosen 2026-10-11; see docs/wiring/DC_MOTOR_WIRING.md. Not yet verified on hardware.", fontsize=9, color=RED)
+    ax.text(1, 2.5, "Verified on the lab rig 2026-10-11 (11.2 V battery, slave id 7); see docs/wiring/DC_MOTOR_WIRING.md.", fontsize=9, color=RED)
     for ext in ("png", "svg"):
         fig.savefig(OUT / f"dc_motor_circuit.{ext}", dpi=130, bbox_inches="tight")
     plt.close(fig)
