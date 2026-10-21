@@ -1,0 +1,9 @@
+# Isolated Arduino CLI environment for ENR312 only.
+# Cores and libraries live in ~/Projects/tools/arduino-enr312, NOT in ~/.arduino15 or
+# ~/Arduino, so nothing here mixes with other projects (e.g. odyssix / STM32 work).
+directories:
+  data: /home/odyssix/Projects/tools/arduino-enr312/data
+  downloads: /home/odyssix/Projects/tools/arduino-enr312/downloads
+  user: /home/odyssix/Projects/tools/arduino-enr312/user
+library:
+  enable_unsafe_install: false
