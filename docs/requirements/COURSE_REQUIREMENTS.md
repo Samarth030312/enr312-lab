@@ -40,14 +40,15 @@ reproduce the course's set-up in simulation. Full list: `../knowledge-base/OPEN_
 
 | Req | Course text | Implementation | Verification | Status |
 |---|---|---|---|---|
-| R-T1 | Collect Uno, DHT11, bulb, SSR, LCD (task 1) | DHT22 used (C-T1); `docs/wiring/TEMPERATURE_WIRING.md` | inspection | wiring DOCUMENTED; parts not inspected |
+| R-T1 | Collect Uno, DHT11, bulb, SSR, LCD (task 1) | DHT11 (lab sensor); `docs/wiring/TEMPERATURE_WIRING.md` | inspection | wiring DOCUMENTED; SSR/LCD/bulb not inspected |
 | R-T2 | Install the latest Arduino IDE (task 2) | Arduino IDE 2.3.10 AppImage + isolated arduino-cli 1.5.1 | `SOFTWARE_TOOLCHAIN.md` | DONE |
 | R-T3 | Read the sensor (task 3) | firmware DHT read every 1/2 s; `$TTEL`; LCD | TEMP-01 | firmware DONE |
 | R-T4 | On-off control, flicker, ways to reduce it (task 4) | modes ONOFF, HYST, MA, TPROP | sim + `test_temperature_model` | SIM-DONE |
 | R-T5 | Moving average, Ts 0.01 s, N = 10 and 500 (task 5) | run-length MA in firmware (proven equal to ring buffer), MA in model | host test + sim | SIM-DONE |
 | R-T6 | Display error; P with Kp 1/2/50/100/500, 0..255 on pin 9; Serial Monitor (task 6) | mode P, LCD line 2, `$TTEL` err/u | `testPSteadyStateErrorMatchesTheory` | SIM-DONE |
 | R-T7 | Simulink simulation, screenshots of inputs/outputs (Assignment 2) | `enr312_temperature.slx` | `test_simulink_temperature_level` | DONE |
-| R-T8 | Section 2 questions 1–25 | — | — | NOT STARTED |
+| R-T8 | Section 2 questions 1–25 | `docs/experiments/temperature/COURSE_QUESTIONS.md` | review | DONE (reference answers) |
+| R-T9 | TEMP handout Section 3, S3-1 … S3-12 (SRC-015) | modes STEP/HYST/PI, `temperature_course_questions.m`, `enr312_temperature.slx` | `test_temperature_model`, temperature host test | SIM DONE; hardware PENDING |
 
 ## 5. Water level — traceability (SRC-001 p.23, Assignment 3)
 

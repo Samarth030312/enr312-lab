@@ -1,6 +1,6 @@
 # Temperature control — wiring and electrical guidelines
 
-Hardware: Arduino Uno, DHT22 (course specifies DHT11; both supported), SSR-40DA solid-state
+Hardware: Arduino Uno, **DHT11** (lab sensor, as the course specifies; DHT22 supported with -DDHT_KIND=DHT22), SSR-40DA solid-state
 relay, 60 W incandescent bulb in a lamp holder, 16x2 LCD. Firmware:
 `temperature/firmware/temperature_controller/`. Status: pin plan DECIDED; **not yet wired**.
 
@@ -12,8 +12,8 @@ relay, 60 W incandescent bulb in a lamp holder, 16x2 LCD. Firmware:
 
 | Arduino Uno | Connects to | Notes |
 |---|---|---|
-| **D7** | DHT22 DATA | 10 kΩ pull-up DATA→5 V (already on most 3-pin modules) |
-| 5 V / GND | DHT22 VCC / GND | |
+| **D7** | DHT11 DATA | 10 kΩ pull-up DATA→5 V (already on most 3-pin modules) |
+| 5 V / GND | DHT11 VCC / GND | |
 | **D9** | SSR input **+** (terminal 3) | course: "relay positive terminal to PWM pin 9" |
 | **GND** | SSR input **−** (terminal 4) | |
 | **D8** | START/STOP push-button → GND | standalone use without MATLAB |
@@ -32,8 +32,8 @@ label**, OI-T3). D9 at 5 V drives it directly; its input current (~10 mA) is wit
   +-------------+        +------------+             |    L ----[fuse 1 A]----+
   | Arduino Uno |  D9 -->| 3 (+)      |             |                        |
   |             | GND -->| 4 (-)  SSR-40DA  1 ------|------------------------+
-  |          D7 |<-- DHT22 DATA (10k to 5V)    2 ---|--- bulb holder --- N
-  |       5V/GND|--- DHT22, LCD                     |    (60 W bulb)
+  |          D7 |<-- DHT11 DATA (10k to 5V)    2 ---|--- bulb holder --- N
+  |       5V/GND|--- DHT11, LCD                     |    (60 W bulb)
   |  D2-D5,D11,12|--- LCD 16x2                      |    PE (earth) to the metal parts
   |          D8 |---[START/STOP]---GND              |
   +-------------+                                   |
@@ -67,7 +67,7 @@ less flicker. Both are simulated in `TemperatureControlApp`.
 ## 5. Bring-up order
 
 1. Low-voltage side only (no mains plugged in). Upload: `scripts/setup/upload temperature /dev/ttyACM0`.
-2. Serial Monitor 115200: `$HELLO,1,enr312_temperature,dev,DHT22`; then `$TTEL` lines every
+2. Serial Monitor 115200: `$HELLO,1,enr312_temperature,dev,DHT11`; then `$TTEL` lines every
    0.1 s with a sensible room temperature. LCD shows `T=..C SP=45`.
 3. Type `$CFG,1,ONOFF,35,1,10,50,2000` then `$RUN,1`: the SSR input LED should light (bulb not
    connected yet). `$STOP,1` turns it off.

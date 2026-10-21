@@ -1,0 +1,4 @@
+case,overshoot_C,band_pp_C,switches_per_min
+"On-off, 45 C",2,2,2.6
+"Moving average N = 10, 45 C",2,2,2.4
+"Moving average N = 500, 45 C",3,3,1.8

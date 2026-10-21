@@ -5,7 +5,7 @@ run: `docs/wiring/TEMPERATURE_WIRING.md` §3 (mains rules), a second person pres
 
 | ID | Course task | Hypothesis | Hardware acceptance | Status |
 |---|---|---|---|---|
-| TEMP-01 | 1–3: read the sensor | DHT22 reads room temperature every 2 s at 0.1 °C resolution. **Also: heater step test** (full power 10 min) to measure R, C and delay. | Reading within ±1 °C of a reference thermometer; step response fitted, `params.m` updated to MEASURED | SIM-DONE |
+| TEMP-01 | 1–3: read the sensor | DHT11 reads room temperature every 1 s at 1 °C resolution. **Also: heater step test** (mode STEP, preset "Heater step") to fit K, τ, θ (handout S3-5). | Reading within ±1 °C of a reference thermometer; step response fitted, `params.m` updated to MEASURED | SIM-DONE |
 | TEMP-02 | 4: on-off at 35/45/55 °C | Regulates; band set by sensor lag and the 2 s update; visible flicker at each crossing | Logged reading, setpoint, heater state; band and switchings/min reported per setpoint | SIM-DONE |
 | TEMP-03 | 5: moving average N = 10 | No change vs on-off (0.1 s window < 2 s DHT update) | switchings/min within ±15 % of TEMP-02 at 45 °C | SIM-DONE |
 | TEMP-04 | 5: moving average N = 500 | Fewer switchings, wider band, more lag | switchings/min lower and band wider than TEMP-03 | SIM-DONE |

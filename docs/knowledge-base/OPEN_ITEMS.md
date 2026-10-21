@@ -42,4 +42,4 @@ quote). Record how it was closed.
 
 ## Temperature / pneumatic
 
-Not started: DHT22 vs DHT11, SSR-40DA datasheet, bulb rating, LCD model, FluidSIM licence.
+Sensor: DHT11 (owner, 2026-10-21). Not started: SSR datasheet (zero-cross?), bulb rating, LCD model (parallel or I2C), FluidSIM licence.
