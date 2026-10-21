@@ -1,0 +1,7 @@
+*.slx  binary
+*.mlapp binary
+*.pdf  binary
+*.png  binary
+*.m    text eol=lf
+*.md   text eol=lf
+*.csv  text eol=lf

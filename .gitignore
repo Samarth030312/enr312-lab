@@ -1,0 +1,48 @@
+# Python environments
+.venv/
+venv/
+__pycache__/
+.pytest_cache/
+*.py[cod]
+
+# MATLAB / Simulink generated files
+*.asv
+*.m~
+slprj/
+codegen/
+*.slxc
+*.mex*
+*.mat
+!data/metadata/*.mat
+
+# Recordings and large media
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.wav
+
+# Copyrighted manuals and course files: keep locally, do not redistribute
+# (RMCS-2303 manual: "may not be reproduced"; see docs/references/README.md)
+docs/references/downloads/*
+!docs/references/downloads/.gitkeep
+
+# Data and results are committed (small CSV/JSON/PNG/logs) so every reported number can be
+# traced to its raw data. Videos are excluded above; build artefacts below.
+dc_motor/tests/fwsim
+results/evidence/**/*.mp4
+
+# Local credentials and machine-specific configuration
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Operating-system files
+.DS_Store
+Thumbs.db
+
+# compiled firmware simulator (built by scripts/validation/build_firmware.sh)
+dc_motor/tests/fwsim
+results/evidence/logs/arduino_ide.log
