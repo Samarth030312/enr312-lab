@@ -34,7 +34,7 @@ function testLinkBuildsTelemetryTable(tc)
     T = link.table();
     tc.verifyGreaterThan(height(T), 100);
     tc.verifyEqual(link.invalidCount, 0);
-    tc.verifyTrue(all(ismember(T.loop, ["S", "P"])));
+    tc.verifyTrue(all(ismember(T.loop, ["S", "E", "P"])));
     % the first speed run settles at its 50 rpm setpoint
     s = T(T.setpoint == 50, :);
     tc.verifyEqual(s.meas(end), 50, 'AbsTol', 1);

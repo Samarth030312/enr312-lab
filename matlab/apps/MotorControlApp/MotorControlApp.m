@@ -111,6 +111,12 @@ function app = MotorControlApp()
     ui.quant = uicheckbox(cg, 'Text', 'Encoder / integer-rpm quantisation', 'Value', true, ...
         'ValueChangedFcn', @(~, ~) changed());
     place(ui.quant, nextRow(22), [1 2]);
+    lab('Speed feedback', nextRow(24), 1);
+    ui.spdFb = uidropdown(cg, 'Items', {'Drive register (~10 ms window)', 'Encoder counts over Ts'}, ...
+        'ItemsData', {'drive', 'encoder'}, 'Value', 'drive', 'ValueChangedFcn', @(~, ~) changed(), ...
+        'Tooltip', ['Drive register 24: coarse (~4.6 rpm steps), no extra delay. ' ...
+                    'Encoder counts: 60/(5200*Ts) rpm resolution, ~Ts/2 delay (course MOTOR S3-2).']);
+    place(ui.spdFb, row, 2);
 
     section('Motor and drive  (ESTIMATED until MOTOR-02)');
     P0 = enr312.motor.params();
@@ -119,7 +125,7 @@ function app = MotorControlApp()
     ui.wc  = slider('Drive speed-loop bandwidth (rad/s)', [10 150], P0.wc_drive, '%.0f');
     ui.acc = slider('Drive acceleration (base rpm/s)', [2000 60000], P0.acc_base_rpm_s, '%.0f');
     lab('Supply voltage', nextRow(24), 1);
-    ui.Vs = uidropdown(cg, 'Items', {'12 V', '24 V'}, 'ItemsData', {12, 24}, 'Value', 12, ...
+    ui.Vs = uidropdown(cg, 'Items', {'11.2 V (lab battery)', '12 V', '24 V'}, 'ItemsData', {11.2, 12, 24}, 'Value', 11.2, ...
         'ValueChangedFcn', @(~, ~) changed());
     place(ui.Vs, row, 2);
     ui.reset = uibutton(cg, 'Text', 'Reset physics to datasheet estimates', 'ButtonPushedFcn', @(~, ~) resetPhysics());
@@ -272,6 +278,7 @@ function app = MotorControlApp()
         ui.Tend.Value = sprintf('%g s', c.Tend);
         if ~any(strcmp(ui.Tend.Items, ui.Tend.Value)), ui.Tend.Items{end + 1} = ui.Tend.Value; end
         ui.Ts.Value = c.Ts; setSlider(ui.lat, 1000 * c.latency);
+        ui.spdFb.Value = c.spdFb;
         update();
     end
 
@@ -344,6 +351,7 @@ function app = MotorControlApp()
         c.latency = min(ui.lat.Value / 1000, c.Ts);
         c.latency = round(c.latency / c.dt) * c.dt;
         c.quant = ui.quant.Value;
+        c.spdFb = ui.spdFb.Value;
         c.P.J = ui.J.Value * 1e-6; c.P.meta.J.status = statusIfMoved(P0.J, c.P.J, 'J');
         c.P.R = ui.R.Value;        c.P.meta.R.status = statusIfMoved(P0.R, c.P.R, 'R');
         c.P.wc_drive = ui.wc.Value;
@@ -360,7 +368,7 @@ function app = MotorControlApp()
     function resetPhysics()
         setSlider(ui.J, P0.J * 1e6); setSlider(ui.R, P0.R);
         setSlider(ui.wc, P0.wc_drive); setSlider(ui.acc, P0.acc_base_rpm_s);
-        ui.Vs.Value = 12;
+        ui.Vs.Value = 11.2;
         changed();
     end
 

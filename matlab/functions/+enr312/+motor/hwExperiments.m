@@ -11,12 +11,20 @@ function E = hwExperiments()
 %   Gains are tuned in simulation against the lab drive's MEASURED acceleration register
 %   (5000, ramp ~50 output rpm/s): faster integral gains overshoot ~40 % because the
 %   integrator winds up while the drive ramps.
-%   Limits chosen for the 11.2 V battery: |speed| <= 120 rpm (motor free-running
-%   maximum ~168 rpm at 11.2 V), position moves <= 1 revolution.
+%   Limits chosen for the 11.2 V battery: |speed| <= 120 rpm in control experiments and
+%   <= 150 rpm in the static map (measured free-running maximum 161-170 rpm at 11.2 V,
+%   enr312.motor.params w_free_out_rpm), position moves <= 1 revolution.
+%
+%   Optional per-run settings (name-value after the duration): 'spdFb' 'drive'|'encoder'
+%   (speed feedback, see the firmware header), 'uMax' (command limit, output rpm).
+%   The "Course" experiments answer the ENR312 MOTOR handout, Section 3 (SRC-013);
+%   docs/experiments/dc_motor/COURSE_QUESTIONS.md maps each question to its runs.
 
     E = struct('name', {}, 'id', {}, 'purpose', {}, 'runs', {});
-    sp = @(ctrl, Kp, Ki, prof, dur) run('speed', ctrl, Kp, Ki, prof, dur);
-    ps = @(ctrl, Kp, Ki, prof, dur) run('position', ctrl, Kp, Ki, prof, dur);
+    sp = @(ctrl, Kp, Ki, prof, dur, varargin) run('speed', ctrl, Kp, Ki, prof, dur, varargin{:});
+    ps = @(ctrl, Kp, Ki, prof, dur, varargin) run('position', ctrl, Kp, Ki, prof, dur, varargin{:});
+    enc = {'spdFb', 'encoder'};
+    stair = [0 0; 2 1; 5 2; 8 3; 11 5; 14 8; 17 12; 20 20; 23 40; 26 60; 29 90; 32 120; 35 150; 38 0];
 
     add('Speed steps, open loop (drive only)', 'MOTOR-02', ...
         'Identify the drive + motor: ramp rate, settling, steady speed at 20...120 rpm.', ...
@@ -49,11 +57,36 @@ function E = hwExperiments()
         'PI on position: overshoot and a slow tail, little benefit over P.', ...
         ps('PI', 0.3, 0.03, [0 90], 12));
 
+
+    % --------------------------------------------- course MOTOR handout, Section 3
+    add('Course S3-3: static map, speed vs command (fwd + rev)', 'MOTOR-02', ...
+        'Steady speed at commands 1...150 rpm, both directions, encoder feedback: dead zone and saturation.', ...
+        [sp('OL', 0, 0, stair, 41, enc{:}), sp('OL', 0, 0, [stair(:, 1), -stair(:, 2)], 41, enc{:})]);
+    add('Course S3-2/S3-4: open-loop step 0 -> 60 rpm (drive vs encoder speed)', 'MOTOR-02', ...
+        'Identify K and tau; compare the drive register (~10 ms window) with encoder counts over Ts.', ...
+        [sp('OL', 0, 0, [0 0; 1 60; 7 0], 10), sp('OL', 0, 0, [0 0; 1 60; 7 0], 10, enc{:})]);
+    add('Course S3-5: position P final error, 10 deg moves (Kp 0.1 / 0.3 / 1.0)', 'MOTOR-05', ...
+        'Small moves: near the target the command is only a few rpm. Does the motor stop short?', ...
+        [ps('P', 0.1, 0, [0 10], 8), ps('P', 0.3, 0, [0 10], 6), ps('P', 1.0, 0, [0 10], 6)]);
+    add('Course S3-9: speed I only, Ki sweep 0.5 / 1 / 2 / 4', 'MOTOR-06', ...
+        'Theory: zeta = 1 / (2 sqrt(tau K Ki)); with tau 0.72 s: 0.83 / 0.59 / 0.42 / 0.29. More Ki -> less damping.', ...
+        [sp('I', 0, 0.5, [0 30], 10, enc{:}), sp('I', 0, 1, [0 30], 10, enc{:}), ...
+         sp('I', 0, 2, [0 30], 10, enc{:}), sp('I', 0, 4, [0 30], 10, enc{:})]);
+    add('Course S3-10: speed PI designed for zeta 0.7 (Kp 1.0, Ki 2.9)', 'MOTOR-07', ...
+        'First-order design K 1, tau 0.72 s, wn 2 rad/s: theory 4.6 % overshoot; identified model (with latency + ramp) predicts ~29 % on the 30 -> 40 step.', ...
+        sp('PI', 1.0, 2.9, [0 30; 8 40; 16 30], 22, enc{:}));
+    add('Course S3-12: PI with the command limited to 50 rpm (saturation)', 'MOTOR-07', ...
+        'Setpoint 80 rpm cannot be reached: output saturates. Clamping anti-windup lets it recover at once when the setpoint drops to 30.', ...
+        sp('PI', 0.3, 1.5, [0 80; 6 30], 12, 'spdFb', 'encoder', 'uMax', 50));
+
     function add(name, id, purpose, runs)
         E(end + 1) = struct('name', name, 'id', id, 'purpose', purpose, 'runs', runs);
     end
 end
 
-function r = run(loop, ctrl, Kp, Ki, profile, duration)
-    r = struct('loop', loop, 'ctrl', ctrl, 'Kp', Kp, 'Ki', Ki, 'profile', profile, 'duration', duration);
+function r = run(loop, ctrl, Kp, Ki, profile, duration, varargin)
+    o = struct('spdFb', 'drive', 'uMax', NaN);
+    for i = 1:2:numel(varargin), o.(varargin{i}) = varargin{i + 1}; end
+    r = struct('loop', loop, 'ctrl', ctrl, 'Kp', Kp, 'Ki', Ki, 'profile', profile, 'duration', duration, ...
+               'spdFb', o.spdFb, 'uMax', o.uMax);
 end

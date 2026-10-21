@@ -9,8 +9,11 @@ classdef HardwareLink < enr312.io.SerialLink
 
         function configure(obj, c)
             %CONFIGURE  $CFG from an enr312.motor config (loop, controller, gains, Ts, limit).
+            %   speed loop: c.spdFb 'drive' -> S (drive speed register), 'encoder' -> E (counts / Ts)
             loops = struct('speed', 'S', 'position', 'P');
-            obj.send('CFG', loops.(c.loop), c.ctrl, c.Kp, c.Ki, c.Kd, ...
+            L = loops.(c.loop);
+            if strcmp(c.loop, 'speed') && isfield(c, 'spdFb') && strcmp(c.spdFb, 'encoder'), L = 'E'; end
+            obj.send('CFG', L, c.ctrl, c.Kp, c.Ki, c.Kd, ...
                      round(1000 * c.Tf), round(1000 * c.Ts), c.uMax);
         end
     end

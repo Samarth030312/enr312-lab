@@ -23,6 +23,7 @@ template <class A, class B> auto max(A a, B b) -> decltype(a + b) { return a > b
 
 extern double g_now_ms;                 // virtual clock
 uint32_t millis();
+uint32_t micros();
 void delay(unsigned long ms);
 void delayMicroseconds(unsigned int);
 void pinMode(uint8_t, uint8_t);

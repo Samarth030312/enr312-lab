@@ -9,9 +9,10 @@ function P = params()
 %   Status vocabulary (docs/knowledge-base/INDEX.md):
 %     VERIFIED_FROM_MANUAL  MEASURED  TESTED  ESTIMATED  ASSUMED  UNVERIFIED
 %
-%   Nothing here is MEASURED yet. Every ESTIMATED value must be replaced by a
-%   MOTOR-02 identification result before simulation and hardware are compared.
-%   The derivations are in docs/knowledge-base/HARDWARE_REFERENCE.md section 1.5.
+%   MEASURED values cite the hardware session log they came from. The electromechanical
+%   constants stay ESTIMATED (derivations: docs/knowledge-base/HARDWARE_REFERENCE.md 1.5):
+%   behind the RMCS-2303 they are not observable at the Arduino's 100 ms sampling. The rig
+%   itself is identified as a black box (enr312.motor.fitIdentified: K = 1, ramp 53 rpm/s).
 
     P = struct(); P.meta = struct();
     kgfcm = 0.0980665;                       % N*m per kgf*cm
@@ -43,6 +44,10 @@ function P = params()
     add('I_lim_drive',  3.0,   'A',       'VERIFIED_FROM_MANUAL', 'SRC-002', 'peak 3 A per phase, p.4');
     add('V_supply',     11.2,  'V',       'ASSUMED',              'user',    'battery, 11.2 V as reported 2026-10-11 (not measured); no power switch');
     add('acc_base_rpm_s', 5000, 'rpm/s',  'MEASURED',             'hw_session_20261011-122159', 'register 12 READ from the lab drive = 5000 (factory default 20000); units still UNVERIFIED (OI-M5)');
+    add('spd_fb_step_base_rpm', 461.5, 'rpm', 'MEASURED',    'hw_session_20261011-131428', ...
+        'speed register 24 moves in steps of 450-465 base rpm (mean 461.5 = 60/(13 lines x 10 ms)): the drive counts encoder LINES over a ~10 ms window (inferred)');
+    add('w_free_out_rpm', 166, 'rpm',     'MEASURED',             'hw_session_20261011-122950', ...
+        'full-voltage free-running speed on the 11.2 V battery (runaway with reversed encoder, LPR 13): 161-170 output rpm');
     add('spd_max_base_rpm', 18000, 'rpm', 'VERIFIED_FROM_MANUAL', 'SRC-002', 'never command above no-load speed, p.18');
     add('wc_drive',     40,    'rad/s',   'ESTIMATED',            '',        'drive internal speed-loop bandwidth; internals undocumented');
 

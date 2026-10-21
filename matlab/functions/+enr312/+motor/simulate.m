@@ -6,8 +6,9 @@ function S = simulate(c)
 %   WHAT IS SIMULATED, deliberately the loop the Arduino will run:
 %     * controller sampled every c.Ts with ZOH output (pidStep.m)
 %     * command takes effect c.latency after the sample (Modbus write time)
-%     * feedback quantised: encoder counts (5200 / output rev) for position,
-%       integer base-motor rpm (rig) or count differences (bare) for speed
+%     * feedback quantised: encoder counts (5200 / output rev) for position;
+%       for speed either the drive's speed register (rig, c.spdFb 'drive': steps of
+%       P.spd_fb_step_base_rpm) or encoder counts differenced over Ts (c.spdFb 'encoder', bare)
 %     * output clipped to +/- c.uMax with conditional-integration anti-windup
 %     * load-torque step c.dist (N*m at the output shaft) at c.tDist
 %
@@ -86,9 +87,11 @@ function S = simulate(c)
             counts = thDeg / P.deg_per_count;
             if c.quant, counts = round(counts); end
             if isSpeed
-                if isRig
-                    meas = x(2) / P.rpm;                         % drive reports base rpm
-                    if c.quant, meas = round(meas); end
+                if isRig && ~strcmp(c.spdFb, 'encoder')
+                    meas = x(2) / P.rpm;                         % drive reports base rpm,
+                    if c.quant                                   % in steps of ~461.5 (10 ms line count)
+                        meas = round(meas / P.spd_fb_step_base_rpm) * P.spd_fb_step_base_rpm;
+                    end
                     meas = meas / N;
                 elseif kk == 1
                     meas = 0;

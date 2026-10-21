@@ -59,6 +59,7 @@ function testRigSpeedPSteadyStateError(tc)
     % Outer P around a speed-controlled drive: e_ss = r / (1 + Kp).
     for Kp = [0.2 0.5 0.8]
         c = enr312.motor.defaultConfig('rig', 'speed'); c.ctrl = 'P'; c.Kp = Kp; c.Tend = 8;
+        c.quant = false;                % theory has no 4.6 rpm feedback steps
         S = enr312.motor.simulate(c);
         tc.verifyEqual(S.metrics.ess_pct, 100 / (1 + Kp), 'AbsTol', 0.5, sprintf('Kp = %g', Kp));
     end
@@ -79,12 +80,22 @@ end
 
 function testIntegralActionRemovesError(tc)
     for plant = {'rig', 'bare'}
-        c = enr312.motor.defaultConfig(plant{1}, 'speed'); c.ctrl = 'PI'; c.dist = 0.5;
+        c = enr312.motor.defaultConfig(plant{1}, 'speed'); c.ctrl = 'PI'; c.dist = 0.5; c.quant = false;
         c.tDist = 8; c.Tend = 14;      % the lab drive ramps at ~50 rpm/s (measured register): give it time
         S = enr312.motor.simulate(c);
         tc.verifyLessThan(abs(S.metrics.ess_pct), 0.5, plant{1});
         tc.verifyLessThan(abs(S.metrics.distFinal), 1, plant{1});   % rpm, under load
     end
+end
+
+function testDriveSpeedFeedbackStepsAsMeasured(tc)
+    % the lab drive's speed register moves in ~4.6 output-rpm steps (hardware 2026-10-11)
+    c = enr312.motor.defaultConfig('rig', 'speed'); c.ctrl = 'OL'; c.setpoint = 37; c.Tend = 3;
+    S = enr312.motor.simulate(c);
+    q = c.P.spd_fb_step_base_rpm / c.P.N;
+    tc.verifyEqual(mod(S.ym(end) / q, 1), 0, 'AbsTol', 1e-9);
+    c.spdFb = 'encoder'; S = enr312.motor.simulate(c);
+    tc.verifyEqual(S.ym(end), 37, 'AbsTol', 60 / (5200 * c.Ts) + 1e-9);   % one count per Ts
 end
 
 function testPositionFeedbackIsQuantised(tc)

@@ -22,7 +22,9 @@ function testLibraryIsSafeAndComplete(tc)
     for e = E
         for r = e.runs
             if strcmp(r.loop, 'speed')
-                tc.verifyLessThanOrEqual(max(abs(r.profile(:, 2))), 120, e.name);   % 11.2 V battery
+                lim = 120; if startsWith(e.name, 'Course S3-3'), lim = 150; end
+                tc.verifyLessThanOrEqual(max(abs(r.profile(:, 2))), lim, e.name);   % 11.2 V battery
+                tc.verifyLessThan(lim, enr312.motor.params().w_free_out_rpm, e.name);
             else
                 tc.verifyLessThanOrEqual(max(abs(r.profile(:, 2))), 360, e.name);
             end
@@ -51,6 +53,15 @@ function testPlaysProfileAndSweep(tc)
     tc.verifyEqual(done, [1 2 3]);
 
     function noteDone(k), done(end + 1) = k; end
+end
+
+function testEncoderFeedbackAndLimitReachFirmware(tc)
+    ft = tc.TestData.ft; link = tc.TestData.link;
+    E = enr312.motor.hwExperiments();
+    e = E(startsWith({E.name}, 'Course S3-12'));
+    runner = enr312.motor.ExperimentRunner(link, e, @(c, k) [], @(s, T, k) [], @() clk(tc));
+    runner.start();
+    tc.verifyTrue(any(startsWith(ft.sent, "$CFG,1,E,PI,0.3,1.5,0,10,100,50*")), strjoin(ft.sent, ' | '));
 end
 
 function testSetpointProfileTiming(tc)

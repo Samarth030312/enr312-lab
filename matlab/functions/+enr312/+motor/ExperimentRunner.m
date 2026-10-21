@@ -46,6 +46,8 @@ classdef ExperimentRunner < handle
             spec = obj.experiment.runs(k);
             c = enr312.motor.defaultConfig('rig', spec.loop);
             c.ctrl = spec.ctrl; c.Kp = spec.Kp; c.Ki = spec.Ki; c.Kd = 0;
+            if isfield(spec, 'spdFb'), c.spdFb = spec.spdFb; end
+            if isfield(spec, 'uMax') && ~isnan(spec.uMax), c.uMax = spec.uMax; end
             c.setpoint = spec.profile(1, 2); c.Tend = spec.duration;
             c.experiment = obj.experiment.id;
             c.preset = sprintf('%s [run %d/%d]', obj.experiment.name, k, numel(obj.experiment.runs));

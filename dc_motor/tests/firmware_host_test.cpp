@@ -31,6 +31,7 @@ uint32_t millis() {
   if (g_realtime) { g_now_ms = wallMs(); return (uint32_t)g_now_ms; }
   if (++g_calls % 50 == 0) g_now_ms += 1; return (uint32_t)g_now_ms;
 }
+uint32_t micros() { millis(); return (uint32_t)(g_now_ms * 1000.0); }
 void delay(unsigned long ms) {
   if (g_realtime) { std::this_thread::sleep_for(std::chrono::milliseconds(ms)); g_now_ms = wallMs(); return; }
   g_now_ms += ms;
@@ -188,6 +189,19 @@ int main(int argc, char **argv) {
 
   send("STOP,1"); runFor(100, false);
   CHECK(emu.reg[2] == 0x0700, "STOP -> motor power off (0x0700), never hold");
+
+  // speed from encoder counts (loop E): same PI, feedback = counts differenced over Ts
+  send("CFG,1,E,PI,0.3,2.5,0,10,100,180"); send("SET,1,40"); send("RUN,1");
+  runFor(5000, true);
+  printf("        encoder-speed loop after 5 s: measured %.3f rpm, counts %.0f\n", lastTelField(5), lastTelField(8));
+  CHECK(fabs(lastTelField(5) - 40) < 0.5, "speed PI on encoder counts (loop E) reaches 40 rpm");
+  CHECK(lastTelField(8) > 1000, "loop E logs the position counts");
+  send("STOP,1"); runFor(100, false);
+  send("DIAG,1"); runFor(50, false);
+  CHECK(Serial.out.find("# loop time control law us: mean") != std::string::npos &&
+        Serial.out.find("# loop time whole sample us: mean") != std::string::npos, "DIAG reports loop time (micros) of the last run");
+  send("CFG,1,X,PI,0.3,2.5,0,10,100,180"); runFor(20, false);
+  CHECK(Serial.out.find("loop must be S E or P") != std::string::npos, "CFG with an unknown loop letter is refused");
 
   send("CFG,1,P,P,0.3,0,0,10,150,180"); send("SET,1,90"); send("RUN,1");
   runFor(6000, true);

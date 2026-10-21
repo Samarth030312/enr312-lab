@@ -21,10 +21,21 @@
 //
 // Commands (Serial Monitor, 115200, newline; checksum optional when typed):
 //   $DIAG,1   register dump      $CFG,1,S,PI,0.3,2.5,0,10,100,180   $SET,1,20
-//   $RUN,1    $STOP,1 (hold)     $ESTOP,1 (motor unpowered)          $HOME,1
+//   $RUN,1    $STOP,1 (power off) $ESTOP,1 (power off, latched)      $HOME,1
 //
-// STATUS: compiles; runs on the PC against an emulated RMCS-2303 (dc_motor/tests,
-// 23 checks pass); NOT yet run on a real board.
+// CFG loop letter (feedback used by the Arduino's loop):
+//   S  speed, from the drive's speed register 24 (the drive counts encoder lines over a short
+//      window of its own: coarse, ~4.6 output rpm steps on the lab rig, but no extra delay)
+//   E  speed, from encoder counts (register 20) differenced over one sample period Ts:
+//      resolution 60 / (5200 * Ts) output rpm (0.115 rpm at Ts = 0.1 s), delay ~Ts/2
+//   P  position, output-shaft degrees from encoder counts (5200 per output rev)
+//
+// Loop timing (course MOTOR S3-6): every sample measures, with micros(), the control-law time
+// and the whole sample (Modbus read + control + Modbus write + telemetry). $DIAG prints the
+// statistics of the last run.
+//
+// STATUS: runs on the lab rig (2026-10-11, slave 7) and on the PC against an emulated
+// RMCS-2303 (dc_motor/tests).
 
 #include <AltSoftSerial.h>
 
@@ -80,7 +91,13 @@ uint32_t seq = 0, tStart = 0, tLastSample = 0, tLastHost = 0;
 int8_t lastDir = 0;               // +1 CW / forward, -1 CCW, 0 unknown
 float lastCmd = 0;                // last speed command sent (output rpm)
 uint8_t runawayCount = 0;         // consecutive samples that look like a runaway
-long lastCounts = 0; bool haveCounts = false;   // position loop: speed estimated from counts
+long lastCounts = 0; bool haveCounts = false;   // speed estimated from counts (loops E and P)
+uint32_t tLastCounts = 0;                        // millis() of lastCounts
+struct LoopStats {                               // micros() statistics of the current/last run
+  uint32_t n = 0, overruns = 0;
+  uint32_t ctrlSum = 0, ctrlMax = 0;             // control law only (pidStep)
+  uint32_t sampleSum = 0, sampleMax = 0;         // whole sample incl. Modbus and telemetry
+} stats;
 float lastSpeedAbs = 0;                          // |speed| at the previous sample
 float piI = 0, piD = 0, piE = 0;  // controller state
 bool piFirst = true;
@@ -234,6 +251,7 @@ static void handleLine(char *line) {
   if (!strcmp(t, "CFG")) {
     if (running) { err(t, 3, "stop first"); return; }
     if (nt != 10) { err(t, 4, "fields"); return; }
+    if (!strchr("SEP", tok[2][0]) || tok[2][1]) { err(t, 4, "loop must be S E or P"); return; }
     cfg.loop = tok[2][0];
     strncpy(cfg.ctrl, tok[3], 3); cfg.ctrl[3] = 0;
     cfg.Kp = atof(tok[4]); cfg.Ki = atof(tok[5]); cfg.Kd = atof(tok[6]);
@@ -248,6 +266,7 @@ static void handleLine(char *line) {
     if (!slaveId) { err(t, 5, "no drive: check 12 V and wiring D8/D9/GND"); return; }
     if (flags & F_ESTOP) { err(t, 6, "estopped: power-cycle or HOME"); return; }
     resetController(); seq = 0; flags = 0; lastDir = 0; lastCmd = 0; runawayCount = 0; haveCounts = false; lastSpeedAbs = 0;
+    stats = LoopStats();
     // The drive keeps LPR in RAM: after its own power cycle it reloads the saved value (334 on
     // the lab drive, seen 2026-10-11). Wrong LPR scales every speed by 334/13 = 25.7: enforce 13
     // before every run, not only at the Uno's boot.
@@ -256,6 +275,9 @@ static void handleLine(char *line) {
     if (lpr != LPR_RMCS5032 && !mbWrite(REG_LPR, LPR_RMCS5032)) { err(t, 12, "could not set LPR 13"); return; }
     bool ok = (cfg.loop != 'P') || mbWrite(REG_MODE, MODE_HOME);   // angle measured from here
     ok = ok && commandSpeed(0);
+    if (ok && cfg.loop == 'E') {                       // reference count for the first difference
+      ok = readPosition(lastCounts); haveCounts = ok; tLastCounts = millis();
+    }
     if (!ok) { stopDrive(MODE_SAFE_STOP); err(t, 9, "drive did not answer (modbus): check 12 V and wiring"); return; }
     running = true; tStart = tLastSample = millis();
     digitalWrite(PIN_LED, HIGH);
@@ -310,7 +332,7 @@ static float pidStep(float e, bool &sat) {
 }
 
 static void controlSample() {
-  uint32_t now = millis();
+  uint32_t now = millis(), us0 = micros();
   float t = (now - tStart) / 1000.0f;
   long counts = 0; int spd = 0;
   float meas = NAN, posCounts = NAN, spdBase = NAN;
@@ -318,6 +340,15 @@ static void controlSample() {
   if (cfg.loop == 'S') {
     ok = readSpeed(spd);
     if (ok) { spdBase = spd; meas = spd / GEAR; }
+  } else if (cfg.loop == 'E') {
+    ok = readPosition(counts);
+    uint32_t tc = millis();
+    if (ok) {
+      posCounts = counts;
+      // actual time between the two reads, not the nominal Ts (Modbus timing jitters)
+      if (haveCounts && tc != tLastCounts) meas = (counts - lastCounts) / CPR_OUT * 60000.0f / (tc - tLastCounts);
+      lastCounts = counts; tLastCounts = tc; haveCounts = true;
+    }
   } else {
     ok = readPosition(counts);
     if (ok) { posCounts = counts; meas = counts * 360.0f / CPR_OUT; }
@@ -331,7 +362,7 @@ static void controlSample() {
   // (seen on the lab rig 2026-10-11: +20 rpm commanded, -166 rpm measured). Two bad samples
   // in a row (>= 0.2 s) -> E-STOP and tell the host.
   float speedNow = NAN;                               // output rpm actually turning
-  if (ok && cfg.loop == 'S') speedNow = meas;
+  if (ok && cfg.loop != 'P') speedNow = meas;
   if (ok && cfg.loop == 'P') {
     if (haveCounts) speedNow = (counts - lastCounts) / CPR_OUT * 60.0f / cfg.Ts;
     lastCounts = counts; haveCounts = true;
@@ -364,8 +395,11 @@ static void controlSample() {
         u = (t < tOL) ? (setpoint >= 0 ? v : -v) : 0;
       }
       u = constrain(u, -cfg.uMax, cfg.uMax);
-    } else {
+    } else if (!isnan(e)) {
+      uint32_t c0 = micros();
       u = pidStep(e, sat);
+      uint32_t dc = micros() - c0;
+      stats.ctrlSum += dc; if (dc > stats.ctrlMax) stats.ctrlMax = dc;
     }
     if (!commandSpeed(u)) { stopDrive(MODE_SAFE_STOP); err("RUN", 9, "modbus write failed - motor power off"); }
     lastCmd = u;
@@ -382,6 +416,9 @@ static void controlSample() {
            (unsigned long)seq++, (unsigned long)(now - tStart), cfg.loop, cfg.ctrl,
            sp, me, er, uu, pc, sb, f);
   sendFrame(body);
+  uint32_t ds = micros() - us0;
+  stats.n++; stats.sampleSum += ds; if (ds > stats.sampleMax) stats.sampleMax = ds;
+  if (f & F_OVERRUN) stats.overruns++;
 }
 
 // ================================================================== setup / loop
@@ -428,6 +465,14 @@ static void diag() {
   long c;
   Serial.print(F("# position counts = "));
   if (readPosition(c)) Serial.println(c); else Serial.println(F("no reply"));
+  if (stats.n) {
+    Serial.print(F("# last run: ")); Serial.print(stats.n); Serial.print(F(" samples, Ts "));
+    Serial.print((unsigned long)(cfg.Ts * 1000)); Serial.print(F(" ms, overruns ")); Serial.println(stats.overruns);
+    Serial.print(F("# loop time control law us: mean ")); Serial.print(stats.ctrlSum / stats.n);
+    Serial.print(F(" max ")); Serial.println(stats.ctrlMax);
+    Serial.print(F("# loop time whole sample us: mean ")); Serial.print(stats.sampleSum / stats.n);
+    Serial.print(F(" max ")); Serial.println(stats.sampleMax);
+  }
   flags &= ~(F_MB_TIMEOUT | F_MB_LRC);
 }
 
