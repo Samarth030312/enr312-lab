@@ -60,7 +60,8 @@ reproduce the course's set-up in simulation. Full list: `../knowledge-base/OPEN_
 | R-L4 | Test cycles, record fill time, switching frequency, chattering (tasks 4–5) | `WaterLevelApp` metrics | `test_level_model` | SIM-DONE |
 | R-L5 | Simulink tank model, Relay block, Lmin 30 / Lmax 80, plot level (task 6) | `enr312_water_level.slx` | `test_simulink_temperature_level` | DONE |
 | R-L6 | Compare hardware and Simulink (task 7) | hardware mode overlays the prediction | LEVEL-06 | NOT STARTED (hardware) |
-| R-L7 | Questions 1–25 (P/I/D, windup, noise) | P / PI modes, clamping anti-windup | sim | SIM-DONE; answers NOT STARTED |
+| R-L7 | Questions 1–25 (P/I/D, windup, noise) | P / PI modes, clamping anti-windup; `docs/experiments/water_level/COURSE_QUESTIONS.md` | sim, review | DONE (reference answers) |
+| R-L8 | WATER handout Section 3, S3-1 … S3-12 (SRC-014) | `water_course_questions.m`; `cycleAnalysis`, `calibrate`, `soundSpeed`; constant/gravity outflow; `$CAL` air temperature | `test_level_course`, water-level host test | SIM DONE; hardware PENDING |
 
 ## 6. Pneumatic — traceability (SRC-001 p.27, Assignment 4)
 

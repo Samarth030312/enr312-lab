@@ -62,7 +62,7 @@ isolates), but joining them does no harm.
 ## 4. Calibration
 
 Measure the sensor face to tank floor distance and the height you call 100 %, then send
-`$CAL,1,<sensor_to_floor_cm>,<full_height_cm>` (defaults 30 cm and 25 cm).
+`$CAL,1,<sensor_to_floor_cm>,<full_height_cm>[,<air_C>]` (defaults 30 cm, 25 cm and 20 °C air; the speed of sound is corrected for the air temperature).
 Check: empty tank reads ~0 %, a ruler-measured level matches the reading within 0.5 cm.
 
 ## 5. Bring-up order
