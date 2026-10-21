@@ -1,0 +1,138 @@
+{
+  "run_id": "LEVEL-03-SIM-20261009-150420",
+  "subsystem": "water_level",
+  "data_class": "SIMULATION",
+  "statement": "MODEL output. Not measured. Parameters are ESTIMATED/ASSUMED unless marked otherwise.",
+  "created": "2026-10-09T15:04:22+0530",
+  "matlab_version": "26.1.0.3346908 (R2026a) Update 5",
+  "git": {
+    "revision": "e5dcf90",
+    "dirty": true
+  },
+  "config": {
+    "mode": "ONOFF",
+    "Lmin": 30,
+    "Lmax": 80,
+    "setpoint": 50,
+    "Kp": 20,
+    "Ki": 0.5,
+    "h0": 10,
+    "drainFactor": 1,
+    "tDrain": 400,
+    "Tend": 900,
+    "seed": 1,
+    "experiment": "LEVEL-03"
+  },
+  "units": {
+    "level": "% of tank height",
+    "u": "0..255 PWM (255 = relay on)",
+    "flow": "L/min"
+  },
+  "parameters": {
+    "A": {
+      "value": 0.0225,
+      "unit": "m^2",
+      "status": "ASSUMED",
+      "source": ""
+    },
+    "H": {
+      "value": 0.25,
+      "unit": "m",
+      "status": "ASSUMED",
+      "source": ""
+    },
+    "h_sensor": {
+      "value": 0.3,
+      "unit": "m",
+      "status": "ASSUMED",
+      "source": ""
+    },
+    "Q_max": {
+      "value": 6.666666666666667E-5,
+      "unit": "m^3/s",
+      "status": "ASSUMED",
+      "source": ""
+    },
+    "tau_pump": {
+      "value": 0.5,
+      "unit": "s",
+      "status": "ESTIMATED",
+      "source": ""
+    },
+    "delay": {
+      "value": 1,
+      "unit": "s",
+      "status": "ESTIMATED",
+      "source": ""
+    },
+    "k_out": {
+      "value": 0.00013608276348795435,
+      "unit": "m^2.5/s",
+      "status": "ESTIMATED",
+      "source": ""
+    },
+    "pwm_dead": {
+      "value": 0.2,
+      "unit": "-",
+      "status": "ESTIMATED",
+      "source": ""
+    },
+    "res_us": {
+      "value": 0.003,
+      "unit": "m",
+      "status": "ESTIMATED",
+      "source": "SRC-014"
+    },
+    "noise_us": {
+      "value": 0.002,
+      "unit": "m",
+      "status": "ESTIMATED",
+      "source": ""
+    },
+    "Ts": {
+      "value": 0.1,
+      "unit": "s",
+      "status": "ESTIMATED",
+      "source": "SRC-014"
+    },
+    "L_min": {
+      "value": 30,
+      "unit": "%",
+      "status": "VERIFIED_FROM_MANUAL",
+      "source": "SRC-001"
+    },
+    "L_max": {
+      "value": 80,
+      "unit": "%",
+      "status": "VERIFIED_FROM_MANUAL",
+      "source": "SRC-001"
+    },
+    "t_dry": {
+      "value": 60,
+      "unit": "s",
+      "status": "ASSUMED",
+      "source": ""
+    },
+    "L_over": {
+      "value": 92,
+      "unit": "%",
+      "status": "ASSUMED",
+      "source": ""
+    }
+  },
+  "metrics": {
+    "pump_starts": 4,
+    "starts_per_hour": 16,
+    "fill_time": 193.30000000000007,
+    "drain_time": 55.066666666666634,
+    "cycle_period": 247.15,
+    "band_low": 30.8110998577951,
+    "band_high": 78.817511085246082,
+    "ss_error": null,
+    "overshoot": null,
+    "settle": null,
+    "error_after_drain": null,
+    "verdict": "CYCLING"
+  },
+  "preset": "On-off 30-80 % (course)"
+}

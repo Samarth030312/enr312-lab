@@ -1,0 +1,9 @@
+Error using VideoWriter/writeVideo (line 378)
+Frame must be 2562 by 1459
+
+Error in enr312.ui.recordFrames (line 21)
+        writeVideo(vw, getframe(fig));
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error in TemperatureControlApp/animate (line 131)
+            lastVideo = enr312.ui.recordFrames(fig, nF, @(j) frame(idx(j)), out.dir, 12);
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

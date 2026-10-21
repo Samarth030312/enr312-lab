@@ -1,0 +1,146 @@
+{
+  "run_id": "TEMP-01-SIM-20261009-154051",
+  "subsystem": "temperature",
+  "data_class": "SIMULATION",
+  "statement": "MODEL output. Not measured. Parameters are ESTIMATED/ASSUMED unless marked otherwise.",
+  "created": "2026-10-09T15:40:52+0530",
+  "matlab_version": "26.1.0.3346908 (R2026a) Update 5",
+  "git": {
+    "revision": "e5dcf90",
+    "dirty": true
+  },
+  "config": {
+    "mode": "ONOFF",
+    "sensor": "DHT22",
+    "setpoint": 0,
+    "hyst": 1,
+    "window": 10,
+    "Kp": 50,
+    "ssr": "pwm490",
+    "tprop": 2,
+    "Tend": 120,
+    "seed": 1,
+    "experiment": "TEMP-01"
+  },
+  "units": {
+    "temperature": "degC",
+    "u": "0..255 (analogWrite)",
+    "heat": "on-fraction"
+  },
+  "parameters": {
+    "P_bulb": {
+      "value": 60,
+      "unit": "W",
+      "status": "ASSUMED",
+      "source": "user"
+    },
+    "eta_heat": {
+      "value": 0.9,
+      "unit": "-",
+      "status": "ESTIMATED",
+      "source": ""
+    },
+    "R_th": {
+      "value": 1,
+      "unit": "K/W",
+      "status": "ESTIMATED",
+      "source": ""
+    },
+    "C_th": {
+      "value": 150,
+      "unit": "J/K",
+      "status": "ESTIMATED",
+      "source": ""
+    },
+    "T_amb": {
+      "value": 30,
+      "unit": "degC",
+      "status": "ASSUMED",
+      "source": ""
+    },
+    "delay": {
+      "value": 3,
+      "unit": "s",
+      "status": "ESTIMATED",
+      "source": ""
+    },
+    "tau_dht22": {
+      "value": 8,
+      "unit": "s",
+      "status": "ESTIMATED",
+      "source": ""
+    },
+    "tau_dht11": {
+      "value": 10,
+      "unit": "s",
+      "status": "ESTIMATED",
+      "source": ""
+    },
+    "per_dht22": {
+      "value": 2,
+      "unit": "s",
+      "status": "ESTIMATED",
+      "source": "SRC-009"
+    },
+    "per_dht11": {
+      "value": 1,
+      "unit": "s",
+      "status": "ESTIMATED",
+      "source": "SRC-013"
+    },
+    "res_dht22": {
+      "value": 0.1,
+      "unit": "degC",
+      "status": "ESTIMATED",
+      "source": "SRC-009"
+    },
+    "res_dht11": {
+      "value": 1,
+      "unit": "degC",
+      "status": "ESTIMATED",
+      "source": "SRC-013"
+    },
+    "noise": {
+      "value": 0.05,
+      "unit": "degC",
+      "status": "ESTIMATED",
+      "source": ""
+    },
+    "Ts": {
+      "value": 0.01,
+      "unit": "s",
+      "status": "VERIFIED_FROM_MANUAL",
+      "source": "SRC-001"
+    },
+    "pwm_hz": {
+      "value": 490.19607843137254,
+      "unit": "Hz",
+      "status": "VERIFIED_FROM_MANUAL",
+      "source": "SRC-004"
+    },
+    "mains_hz": {
+      "value": 50,
+      "unit": "Hz",
+      "status": "ASSUMED",
+      "source": ""
+    },
+    "T_cutoff": {
+      "value": 70,
+      "unit": "degC",
+      "status": "ASSUMED",
+      "source": ""
+    }
+  },
+  "metrics": {
+    "t_reach": null,
+    "overshoot": null,
+    "band_pp": 0.099999999999997868,
+    "mean_error": -29.966759002770097,
+    "switches_per_min": 0,
+    "duty": 0,
+    "energy_Wh": 0,
+    "cutoff": false,
+    "verdict": "SENSOR ONLY"
+  },
+  "preset": "Sensor only, heater off"
+}
