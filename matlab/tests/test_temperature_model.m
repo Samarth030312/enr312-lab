@@ -28,7 +28,7 @@ function testOpenLoopRiseMatchesFirstOrder(tc)
 end
 
 function testShortWindowDoesNotFilter(tc)
-    % N = 10 at 10 ms spans 0.1 s; the DHT22 updates every 2 s: same behaviour as plain on-off.
+    % N = 10 at 10 ms spans 0.1 s; the DHT updates every 1 s (DHT11): same behaviour as plain on-off.
     a = enr312.temperature.simulate(enr312.temperature.presetConfig('On-off, 45 C'));
     b = enr312.temperature.simulate(enr312.temperature.presetConfig('Moving average N = 10, 45 C'));
     tc.verifyEqual(b.metrics.switches_per_min, a.metrics.switches_per_min, 'RelTol', 0.15);
@@ -36,7 +36,7 @@ end
 
 function testHysteresisReducesSwitching(tc)
     a = enr312.temperature.simulate(enr312.temperature.presetConfig('On-off, 45 C'));
-    b = enr312.temperature.simulate(enr312.temperature.presetConfig('On-off with 1 C hysteresis, 45 C'));
+    b = enr312.temperature.simulate(enr312.temperature.presetConfig('On-off with hysteresis +/-0.5 C, 45 C'));
     tc.verifyLessThan(b.metrics.switches_per_min, a.metrics.switches_per_min);
     tc.verifyGreaterThan(b.metrics.band_pp, a.metrics.band_pp);
 end
@@ -57,6 +57,33 @@ function testOvertemperatureCutoffLatches(tc)
     tc.verifyTrue(S.cutoff); tc.verifyEqual(S.metrics.verdict, 'OVER-TEMP CUT-OFF');
     tc.verifyEqual(S.heat(end), 0);
     tc.verifyLessThan(max(S.Traw), 55);
+end
+
+function testStepHeatsThenCools(tc)
+    c = enr312.temperature.presetConfig('Heater step: full ON to 55 C, then cool (K, tau, theta)');
+    c.P.noise = 0; S = enr312.temperature.simulate(c);
+    k = find(S.Traw >= 55, 1);
+    tc.verifyNotEmpty(k);
+    tc.verifyEqual(S.heat(k + 20:end), zeros(numel(S.heat) - k - 19, 1));   % latched off
+    tc.verifyLessThan(S.T(end), max(S.T) - 10);                             % cooled down
+end
+
+function testPIRemovesErrorWithoutWindup(tc)
+    c = enr312.temperature.presetConfig('PI Kp = 50, Ki = 0.5, 45 C (anti-windup)');
+    c.ssr = 'average'; c.Tend = 1500; c.P.noise = 0;
+    S = enr312.temperature.simulate(c);
+    tc.verifyLessThan(abs(S.metrics.mean_error), 0.6);                       % 1 C sensor steps
+    cP = c; cP.mode = 'P'; SP = enr312.temperature.simulate(cP);
+    tc.verifyGreaterThan(SP.metrics.mean_error, 2 * abs(S.metrics.mean_error));
+    tc.verifyLessThan(S.metrics.overshoot, 3);                               % clamped during warm-up
+end
+
+function testFOPDTMapping(tc)
+    c = enr312.temperature.withFOPDT(enr312.temperature.defaultConfig(), 40, 200, 5);
+    P = c.P;
+    tc.verifyEqual(P.eta_heat * P.P_bulb * P.R_th, 40, 'AbsTol', 1e-12);
+    tc.verifyEqual(P.R_th * P.C_th, 200, 'AbsTol', 1e-12);
+    tc.verifyEqual(P.delay, 5);
 end
 
 function testEveryPresetRuns(tc)

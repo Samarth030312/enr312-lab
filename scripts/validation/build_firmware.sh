@@ -6,7 +6,10 @@ acli="$root/scripts/setup/acli"
 build() { echo "== $1 $2"; "$acli" compile --fqbn arduino:avr:uno --build-property "compiler.cpp.extra_flags=$2" "$root/$1" | tail -2; }
 build dc_motor/firmware/motor_controller ""
 build temperature/firmware/temperature_controller ""
-build temperature/firmware/temperature_controller "-DLCD_I2C -DDHT_KIND=DHT11"
+build temperature/firmware/temperature_controller "-DLCD_I2C"
+build temperature/firmware/temperature_controller "-DDHT_KIND=DHT22"
+build temperature/examples/lcd_hello_alignment ""
+build temperature/examples/lcd_hello_alignment "-DLCD_I2C"
 build water_level/firmware/level_controller ""
 build water_level/firmware/level_controller "-DRELAY_ACTIVE_LOW=0"
 # host test: run-length moving average == ring buffer (extracts the code from the sketch)
@@ -18,6 +21,10 @@ i = s.index('struct Run {'); j = s.index('\n}\n', s.index('static void maPush'))
 open(sys.argv[2], 'w').write(s[i:j])
 PY
 g++ -std=c++17 -O1 -I"$tmp" -o "$tmp/tma" "$root/temperature/tests/test_moving_average.cpp" && "$tmp/tma"
+# host test: the real temperature firmware against an emulated bulb + DHT11 (every mode + safety);
+# transcript -> fixture for matlab/tests/test_temperature_transcript.m
+g++ -std=c++17 -O1 -w -include algorithm -I"$root/temperature/tests/host_stubs" -o "$tmp/ttest" "$root/temperature/tests/firmware_host_test.cpp"
+"$tmp/ttest" "$root/temperature/tests/fixtures/temperature_transcript.txt"
 # host test: the real motor firmware against an emulated RMCS-2303; its transcript is
 # the fixture for matlab/tests/test_firmware_transcript.m
 g++ -std=c++17 -O1 -w -include algorithm -I"$root/dc_motor/tests/host_stubs" -o "$tmp/fwtest" "$root/dc_motor/tests/firmware_host_test.cpp"

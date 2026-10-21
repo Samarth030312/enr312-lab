@@ -1,8 +1,11 @@
 // ENR312 temperature controller
-// Arduino Uno + DHT22 (or DHT11) + SSR-40DA + 60 W bulb + 16x2 LCD.
+// Arduino Uno + DHT11 (lab sensor; DHT22 with -DDHT_KIND=DHT22) + SSR + bulb + 16x2 LCD.
 //
-// Course tasks (SRC-001 p.17): on-off, moving average (N = 10 / 500 at
-// Ts = 0.01 s), P control (Kp = 1, 2, 50, 100, 500; u = 0..255 on pin 9).
+// Course tasks (TEMP handout SRC-015, course file SRC-001 p.17): on-off, moving average
+// (N = 10 / 500 at Ts = 0.01 s), P control (Kp = 1, 2, 50, 100, 500; u = 0..255 on pin 9).
+// Extra modes for the handout's Section 3: HYST (on-off with hysteresis, S3-9), STEP (bulb fully
+// ON until the reading reaches the setpoint, then OFF for the rest of the run: heating and
+// cooling curves for the K, tau, theta fit, S3-5) and PI (clamping anti-windup, S3-12).
 // Telemetry to MATLAB / Serial Monitor with protocol v1 ($TTEL).
 //
 // PINS (docs/wiring/TEMPERATURE_WIRING.md)
@@ -17,8 +20,10 @@
 // Hard cut-off at 70 C or on 5 s of failed sensor reads (latched until STOP).
 // Commands may be typed in the Serial Monitor without a checksum, e.g.
 //   $CFG,1,P,45,1,10,50,2000      $RUN,1      $STOP,1
+//   CFG fields: mode, setpoint C, hysteresis band C, MA window, Kp, TPROP window ms[, Ki per s]
 //
-// STATUS: compiles; NOT yet run on hardware.
+// STATUS: compiles; runs on the PC against an emulated bulb + DHT (temperature/tests);
+// NOT yet run on hardware.
 
 #include <DHT.h>
 #ifdef LCD_I2C
@@ -31,7 +36,7 @@ LiquidCrystal lcd(12, 11, 5, 4, 3, 2);
 #endif
 
 #ifndef DHT_KIND
-#define DHT_KIND DHT22            // -DDHT_KIND=DHT11 for the course sensor
+#define DHT_KIND DHT11            // lab sensor (owner, 2026-10-21); -DDHT_KIND=DHT22 for the other one
 #endif
 #define FW_NAME "enr312_temperature"
 #ifndef FW_REV
@@ -48,13 +53,16 @@ const uint8_t F_RUNNING = 1, F_SENSOR = 2, F_OVERTEMP = 4, F_WATCHDOG = 8, F_BUT
 
 DHT dht(PIN_DHT, DHT_KIND);
 
-enum Mode : uint8_t { ONOFF, HYST, MA, PCTRL, TPROP };
-const char *MODE_NAMES[] = {"ONOFF", "HYST", "MA", "P", "TPROP"};
+enum Mode : uint8_t { ONOFF, HYST, MA, PCTRL, TPROP, STEP, PICTRL };
+const uint8_t N_MODES = 7;
+const char *MODE_NAMES[] = {"ONOFF", "HYST", "MA", "P", "TPROP", "STEP", "PI"};
 struct Config {
   Mode mode = ONOFF;
-  float setpoint = 45, hyst = 1.0f, Kp = 50;
+  float setpoint = 45, hyst = 1.0f, Kp = 50, Ki = 0;
   uint16_t window = 10, tpropMs = 2000;
 } cfg;
+float piI = 0;                    // PI integral term, in output units (0..255)
+bool stepDone = false;            // STEP: setpoint reached, heater latched off
 
 // Moving average of the last N 10-ms samples, stored run-length encoded: the DHT
 // value only changes every 1-2 s, so a 500-sample window holds a few runs. Exactly
@@ -116,19 +124,21 @@ static void handleLine(char *line) {
   if (!strcmp(t, "PING")) return;
   if (!strcmp(t, "CFG")) {
     if (running) { err(t, 3, "stop first"); return; }
-    if (nt != 8) { err(t, 4, "fields"); return; }
+    if (nt != 8 && nt != 9) { err(t, 4, "fields"); return; }
     uint8_t m = 255;
-    for (uint8_t i = 0; i < 5; i++) if (!strcmp(tok[2], MODE_NAMES[i])) m = i;
+    for (uint8_t i = 0; i < N_MODES; i++) if (!strcmp(tok[2], MODE_NAMES[i])) m = i;
     if (m == 255) { err(t, 5, "mode"); return; }
     cfg.mode = (Mode)m; cfg.setpoint = atof(tok[3]); cfg.hyst = atof(tok[4]);
     cfg.window = constrain(atoi(tok[5]), 1, MA_MAX); cfg.Kp = atof(tok[6]); cfg.tpropMs = constrain(atol(tok[7]), 200, 60000);
+    cfg.Ki = (nt == 9) ? atof(tok[8]) : 0;
     if (cfg.setpoint > T_CUTOFF - 5) cfg.setpoint = T_CUTOFF - 5;
     ack(t); return;
   }
   if (!strcmp(t, "SET")) { if (nt == 3) { cfg.setpoint = min(atof(tok[2]), T_CUTOFF - 5); ack(t); } else err(t, 4, "fields"); return; }
   if (!strcmp(t, "RUN")) {
     if (flags & (F_OVERTEMP | F_SENSOR)) { err(t, 6, "fault latched: STOP first"); return; }
-    running = true; hostControlled = true; seq = 0; tStart = millis(); resetFilter(); heatState = false; ack(t); return;
+    running = true; hostControlled = true; seq = 0; tStart = millis(); resetFilter(); heatState = false;
+    piI = 0; stepDone = false; ack(t); return;
   }
   if (!strcmp(t, "STOP") || !strcmp(t, "ESTOP")) { stopAll(); flags = 0; ack(t); return; }
   err(t, 7, "unknown");
@@ -167,6 +177,19 @@ static void controlStep(uint32_t now) {
       u = constrain((int)lround(cfg.Kp * e), 0, 255);
       uint32_t ph = (now - tStart) % cfg.tpropMs;
       heater(ph < (uint32_t)u * cfg.tpropMs / 255); break;
+    }
+    case STEP:                                         // open-loop heating, then cooling
+      if (tRaw >= cfg.setpoint) stepDone = true;
+      u = stepDone ? 0 : 255; heater(u); break;
+    case PICTRL: {
+      // u = Kp e + I, I += Ki Ts e, output 0..255. Clamping anti-windup: when the output is at
+      // a limit and the error pushes further into it, the integral is not advanced.
+      float iNew = piI + cfg.Ki * (TS_MS / 1000.0f) * e;
+      float uRaw = cfg.Kp * e + iNew;
+      bool satHi = uRaw > 255, satLo = uRaw < 0;
+      if (!((satHi && e > 0) || (satLo && e < 0))) piI = iNew;
+      u = constrain((int)lround(cfg.Kp * e + piI), 0, 255);
+      analogWrite(PIN_SSR, u); heaterOn = u > 0; break;
     }
   }
   (void)tFilt;
@@ -209,6 +232,7 @@ void setup() {
   lcd.print("ENR312 temp ctrl");
   dht.begin();
   char b[48]; snprintf(b, sizeof(b), "HELLO,1,%s,%s,%s", FW_NAME, FW_REV, DHT_KIND == DHT11 ? "DHT11" : "DHT22"); sendFrame(b);
+  Serial.println(F("# commands: $CFG,1,<ONOFF|HYST|MA|P|TPROP|STEP|PI>,sp,hyst,N,Kp,tpropMs[,Ki]  $RUN,1  $STOP,1"));
   lastGoodRead = millis();
 }
 

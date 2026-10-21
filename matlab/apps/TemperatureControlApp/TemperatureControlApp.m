@@ -14,7 +14,7 @@ function app = TemperatureControlApp()
     P0 = enr312.temperature.params();
     S = []; busy = false; currentExperiment = ''; lastVideo = ''; hwCfg = [];
     w = enr312.ui.LabWindow(['ENR312  ' char(183) '  Temperature control  ' char(183) ...
-        '  bulb ' char(183) ' DHT22 ' char(183) ' SSR ' char(183) ' LCD ' char(183) ' Arduino Uno'], ...
+        '  bulb ' char(183) ' DHT11 ' char(183) ' SSR ' char(183) ' LCD ' char(183) ' Arduino Uno'], ...
         {{1, [1 2]}, {2, 1}, {2, 2}, {3, 1}, {3, 2}});
     C = w.C; fig = w.fig; fig.CloseRequestFcn = @(~, ~) onClose();
     ax = w.ax;
@@ -25,9 +25,10 @@ function app = TemperatureControlApp()
     w.section('Experiment');
     pr = enr312.temperature.presets();
     ui.preset = w.dropdown('', [{'(custom)'}, {pr.name}], [{'(custom)'}, {pr.name}], '(custom)', @applyPreset);
-    ui.mode = w.dropdown('Control', {'On-off', 'On-off + hysteresis', 'Moving average + on-off', 'P (PWM pin 9)', 'P, time-proportional'}, ...
-        {'ONOFF', 'HYST', 'MA', 'P', 'TPROP'}, 'ONOFF', @changed);
-    ui.sensor = w.dropdown('Sensor', {'DHT22', 'DHT11 (course)'}, {'DHT22', 'DHT11'}, 'DHT22', @changed);
+    ui.mode = w.dropdown('Control', {'On-off', 'On-off + hysteresis', 'Moving average + on-off', 'P (PWM pin 9)', ...
+        'P, time-proportional', 'Heater step (full ON, then cool)', 'PI (anti-windup)'}, ...
+        {'ONOFF', 'HYST', 'MA', 'P', 'TPROP', 'STEP', 'PI'}, 'ONOFF', @changed);
+    ui.sensor = w.dropdown('Sensor', {'DHT11 (lab, course)', 'DHT22'}, {'DHT11', 'DHT22'}, 'DHT11', @changed);
     ui.run = w.button(char(9654) + "  RUN (time-lapse)", @animate, C.green, 40);
     ui.speed = w.dropdown('Time-lapse', {'10x', '30x', '60x', '120x'}, {10, 30, 60, 120}, 60, @() []);
     ui.record = w.checkbox('Record video of RUN + save evidence', false, @() []);
@@ -37,6 +38,7 @@ function app = TemperatureControlApp()
     ui.hyst = w.slider('Hysteresis band (C)', [0 5], 1, '%.1f', @changed);
     ui.window = w.dropdown('Moving-average N', {'1', '10', '50', '100', '500'}, {1, 10, 50, 100, 500}, 10, @changed);
     ui.Kp = w.slider('Kp (PWM counts per C)', [0 500], 50, '%.0f', @changed);
+    ui.Ki = w.slider('Ki (PWM counts per C per s, PI)', [0 5], 0, '%.2f', @changed);
     ui.ssr = w.dropdown('SSR drive', {'analogWrite pin 9 (course)', 'ideal average'}, {'pwm490', 'average'}, 'pwm490', @changed);
     ui.tprop = w.slider('Time-proportioning window (s)', [0.5 10], 2, '%.1f', @changed);
     ui.Tend = w.dropdown('Run length', {'2 min', '5 min', '10 min', '15 min', '20 min'}, {120, 300, 600, 900, 1200}, 900, @changed);
@@ -75,7 +77,7 @@ function app = TemperatureControlApp()
         currentExperiment = c.experiment;
         ui.mode.Value = c.mode; ui.sensor.Value = c.sensor;
         w.setSlider(ui.sp, max(c.setpoint, 25)); w.setSlider(ui.hyst, c.hyst); ui.window.Value = c.window;
-        w.setSlider(ui.Kp, c.Kp); ui.ssr.Value = c.ssr; w.setSlider(ui.tprop, c.tprop);
+        w.setSlider(ui.Kp, c.Kp); w.setSlider(ui.Ki, c.Ki); ui.ssr.Value = c.ssr; w.setSlider(ui.tprop, c.tprop);
         if ~any(cellfun(@(v) isequal(v, c.Tend), ui.Tend.ItemsData))
             ui.Tend.Items{end + 1} = sprintf('%g s', c.Tend); ui.Tend.ItemsData{end + 1} = c.Tend;
         end
@@ -93,7 +95,7 @@ function app = TemperatureControlApp()
         c = enr312.temperature.defaultConfig();
         c.experiment = currentExperiment;
         c.mode = ui.mode.Value; c.sensor = ui.sensor.Value; c.setpoint = ui.sp.Value;
-        c.hyst = ui.hyst.Value; c.window = ui.window.Value; c.Kp = ui.Kp.Value;
+        c.hyst = ui.hyst.Value; c.window = ui.window.Value; c.Kp = ui.Kp.Value; c.Ki = ui.Ki.Value;
         c.ssr = ui.ssr.Value; c.tprop = ui.tprop.Value; c.Tend = ui.Tend.Value;
         c.P.P_bulb = ui.Pb.Value; c.P.R_th = ui.R.Value; c.P.C_th = ui.Cth.Value;
         c.P.delay = ui.del.Value; c.P.T_amb = ui.Ta.Value;
@@ -186,7 +188,7 @@ function app = TemperatureControlApp()
 
     function hwStart(link)
         hwCfg = readConfig();
-        link.send('CFG', hwCfg.mode, hwCfg.setpoint, hwCfg.hyst, hwCfg.window, hwCfg.Kp, round(1000 * hwCfg.tprop));
+        link.send('CFG', hwCfg.mode, hwCfg.setpoint, hwCfg.hyst, hwCfg.window, hwCfg.Kp, round(1000 * hwCfg.tprop), hwCfg.Ki);
         if ~isempty(S), set(tr.pred, 'XData', S.t, 'YData', S.T); end
     end
 
@@ -272,7 +274,7 @@ function poseView(V, S, k)
     V.spMark.YData = yOf(c.setpoint) * [1 1];
     on = 'OFF'; if h > 0, on = 'ON '; end
     V.lcd1.String = sprintf('T=%5.1fC SP=%2.0f', S.Traw(k), max(c.setpoint, 0));
-    if any(strcmp(c.mode, {'P', 'TPROP'}))
+    if any(strcmp(c.mode, {'P', 'TPROP', 'PI'}))
         V.lcd2.String = sprintf('e=%+5.1f u=%3.0f', S.e(k), S.u(k));
     else
         V.lcd2.String = sprintf('%s e=%+5.1f', on, S.e(k));
@@ -319,7 +321,8 @@ end
 
 % ======================================================================= text
 function s = modeName(m)
-    n = struct('ONOFF', 'on-off', 'HYST', 'on-off + hysteresis', 'MA', 'moving average', 'P', 'P control', 'TPROP', 'P, time-proportional');
+    n = struct('ONOFF', 'on-off', 'HYST', 'on-off + hysteresis', 'MA', 'moving average', 'P', 'P control', ...
+               'TPROP', 'P, time-proportional', 'STEP', 'heater step', 'PI', 'PI control');
     s = n.(m);
 end
 
@@ -329,6 +332,10 @@ function s = theory(c)
         case {'P', 'TPROP'}
             e = (c.setpoint - P.T_amb) / (1 + c.Kp * G / 255);
             s = sprintf('e_ss = (SP-Ta)/(1+Kp G/255) = %.2f C', e);
+        case 'PI'
+            s = 'e_ss = 0 (integral action), if the setpoint is reachable';
+        case 'STEP'
+            s = sprintf('heats towards Ta + %.0f C; K, tau, theta from the curve', G);
         otherwise
             s = sprintf('max reachable %.0f C', P.T_amb + G);
     end
@@ -340,6 +347,8 @@ function s = noteFor(c)
         case 'HYST', s = 'Hysteresis: the heater waits for a full band of error before switching, so it switches less often but the temperature swings more.';
         case 'MA', s = 'Moving average over N x 10 ms. The DHT only updates every 1-2 s, so N = 10 (0.1 s) averages the same reading: no effect. N = 500 (5 s) does smooth, and adds lag.';
         case 'P', s = 'P on pin 9: analogWrite makes 490 Hz PWM, but a zero-cross SSR only switches at mains zero crossings (every 10 ms), so the bulb receives a random pattern of half-cycles: intense flicker while 0 < u < 255.';
+        case 'STEP', s = 'Heater step: bulb fully ON until the reading reaches the setpoint, then OFF for good. Fit K, tau, theta to the heating part; compare the cooling rate.';
+        case 'PI', s = 'PI: the integral keeps adding heat until the error is zero. Clamping stops the integral when u is at 0 or 255, so it does not wind up during the warm-up.';
         otherwise, s = 'Time-proportional: one on/off cycle per window. Same average power as P, far fewer switchings.';
     end
 end
@@ -355,7 +364,7 @@ function s = limitsText(c)
          '<b>NOT known:</b><br>&bull; <b>Thermal R, C, delay and sensor lag are ESTIMATED</b> for a 60 W bulb with the sensor close by. ' ...
          'TEMP-01 (heater step) must measure them.<br>&bull; Single lumped temperature: no air currents, no enclosure walls, no radiation on the sensor.<br>' ...
          '&bull; Bulb rating and SSR type (zero-cross vs random) not yet inspected (OI-T2, OI-T3).<br>' ...
-         sprintf('&bull; Sensor: %s. The course specifies DHT11; this rig uses DHT22 (better resolution, slower update).', c.sensor)];
+         sprintf('&bull; Sensor: %s. The lab uses the course DHT11: 1 C steps, 1 reading per second, rated 0-50 C (UNVERIFIED datasheet values): a 55 C setpoint is outside its range.', c.sensor)];
 end
 
 function s = secs(v), if isnan(v), s = 'not reached'; else, s = sprintf('%.0f s', v); end, end

@@ -21,6 +21,10 @@ function P = params()
     add('res_dht22', 0.1,   'degC','ESTIMATED', 'SRC-009', 'reported resolution');
     add('res_dht11', 1.0,   'degC','ESTIMATED', 'SRC-013', 'reported resolution');
     add('noise',     0.05,  'degC','ESTIMATED', '',     'sensor noise, 1 sigma');
+    add('range_dht11', [0 50], 'degC', 'UNVERIFIED', 'SRC-009', 'typical DHT11 datasheet value; the datasheet is not yet filed');
+    add('acc_dht11', 2,     'degC','UNVERIFIED', 'SRC-009', 'typical DHT11 datasheet accuracy +/- 2 C');
+    add('range_dht22', [-40 80], 'degC', 'UNVERIFIED', 'SRC-009', 'typical AM2302 datasheet value');
+    add('acc_dht22', 0.5,   'degC','UNVERIFIED', 'SRC-009', 'typical AM2302 datasheet accuracy +/- 0.5 C');
     add('Ts',        0.01,  's',   'VERIFIED_FROM_MANUAL', 'SRC-001', 'course: sampling time 0.01 s (p.17)');
     add('pwm_hz',    16e6 / (64 * 510), 'Hz', 'VERIFIED_FROM_MANUAL', 'SRC-004', 'Uno pin 9: 16 MHz / 64 / 510 = 490.196 Hz (not locked to mains)');
     add('mains_hz',  50,    'Hz',  'ASSUMED',   '',     'India 230 V 50 Hz');

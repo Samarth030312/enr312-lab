@@ -7,7 +7,8 @@ function S = simulate(c)
 %   SENSOR: transport delay -> first-order lag -> DHT reading every 1 s (DHT11)
 %           or 2 s (DHT22), quantised to its resolution, with noise.
 %   CONTROLLER every Ts = 0.01 s (course), on the latest reading:
-%     ONOFF / HYST / MA (on a moving average of the last N 10-ms samples) / P / TPROP
+%     ONOFF / HYST / MA (on a moving average of the last N 10-ms samples) / P / TPROP /
+%     STEP (full power until the reading reaches the setpoint, then off) / PI (clamping)
 %   SSR: 'pwm490' -- a zero-cross SSR samples the 490 Hz PWM at the start of each
 %        10 ms mains half-cycle, so the delivered power is a pseudo-random set of
 %        half-cycles whose average is ~u/255 (this is the flicker the course asks
@@ -33,7 +34,7 @@ function S = simulate(c)
     T = P.T_amb; Ts = P.T_amb; Traw = NaN;
     delayBuf = repmat(T, nDel, 1); dp = 1;
     W = max(1, round(c.window)); maBuf = zeros(W, 1); maN = 0; maSum = 0; mp = 1;
-    heatState = false; lastHeat = false; switches = 0; cutoff = false;
+    heatState = false; lastHeat = false; switches = 0; cutoff = false; stepDone = false; piI = 0;
     hAcc = 0; nAcc = 0; m = 0; tReach = NaN;
     phase = 0.37;                                   % PWM vs mains phase, arbitrary
 
@@ -59,8 +60,18 @@ function S = simulate(c)
                 elseif Traw > c.setpoint + c.hyst / 2, heatState = false; end
                 heatFrac = double(heatState);
             case 'MA', heatFrac = double(Tf < c.setpoint);
-            case {'P', 'TPROP'}
-                u = min(max(round(c.Kp * (c.setpoint - Traw)), 0), 255);
+            case 'STEP'
+                if Traw >= c.setpoint, stepDone = true; end
+                heatFrac = double(~stepDone);
+            case {'P', 'TPROP', 'PI'}
+                e = c.setpoint - Traw;
+                if strcmp(c.mode, 'PI')                         % same order as the firmware
+                    iNew = piI + c.Ki * dt * e; uRaw = c.Kp * e + iNew;
+                    if ~((uRaw > 255 && e > 0) || (uRaw < 0 && e < 0)), piI = iNew; end
+                    u = min(max(round(c.Kp * e + piI), 0), 255);
+                else
+                    u = min(max(round(c.Kp * e), 0), 255);
+                end
                 if strcmp(c.mode, 'TPROP')
                     heatFrac = double(mod(t, c.tprop) < u / 255 * c.tprop);
                 elseif strcmp(c.ssr, 'average')
