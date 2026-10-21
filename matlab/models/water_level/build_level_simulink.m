@@ -2,7 +2,9 @@ function mdl = build_level_simulink(outDir)
 %BUILD_LEVEL_SIMULINK  Generate enr312_water_level.slx (course Assignment 3).
 %
 %   Tank as an integrator with inflow and outflow (course task 6):
-%       A dh/dt = q_pump - k_out d(t) sqrt(h),   0 <= h <= H
+%       A dh/dt = q_pump - q_out,   0 <= h <= H
+%       q_out = k_out d(t) sqrt(h)      gravity outlet (outGravity = 1, self-regulating), or
+%       q_out = Qc d(t)                 constant / pumped outflow (outGravity = 0, pure integrator)
 %   Pump: dead time + first-order spin-up. Sensor: 0.1 s sampling, quantised.
 %   modeSel 1: ON-OFF with the Simulink Relay block (switch off at Lmax, on at
 %   Lmin), as the guideline asks; 2: PI (Discrete PID block, Ki = 0 gives P),
@@ -25,7 +27,10 @@ function mdl = build_level_simulink(outDir)
     B('simulink/Math Operations/Math Function', 'sqrt', [780 120 810 150], 'Operator', 'sqrt', 'Orientation', 'left');
     B('simulink/Math Operations/Gain', 'orifice k', [730 120 770 150], 'Gain', 'kout', 'Orientation', 'left');
     B('simulink/Sources/Step', 'Drain opened', [740 180 770 210], 'Time', 'tDrain', 'Before', '1', 'After', 'drain', 'SampleTime', '0');
-    B('simulink/Math Operations/Product', 'outflow', [670 130 700 180], 'Orientation', 'left');
+    B('simulink/Sources/Constant', 'constant outflow', [800 220 840 240], 'Value', 'Qc', 'Orientation', 'left');
+    B('simulink/Sources/Constant', 'outGravity', [800 250 840 270], 'Value', 'outGravity', 'Orientation', 'left');
+    B('simulink/Signal Routing/Switch', 'Outflow model', [700 120 730 260], 'Criteria', 'u2 > Threshold', 'Threshold', '0.5', 'Orientation', 'left');
+    B('simulink/Math Operations/Product', 'outflow', [640 130 670 180], 'Orientation', 'left');
     B('simulink/Math Operations/Gain', 'to percent', [810 45 850 75], 'Gain', '100/H');
     B('simulink/Discrete/Zero-Order Hold', 'Ping 100 ms', [880 45 910 75], 'SampleTime', 'Ts');
     B('simulink/Discontinuities/Quantizer', 'Sensor resolution', [940 45 980 75], 'QuantizationInterval', 'resPct');
@@ -54,7 +59,8 @@ function mdl = build_level_simulink(outDir)
     B('simulink/Sinks/Out1', 'pump_flow', [640 200 670 215], 'Port', '3');
     L = @(a, b) add_line(mdl, a, b, 'autorouting', 'smart');
     L('Net flow/1', '1 over A/1'); L('1 over A/1', 'h (m)/1'); L('h (m)/1', 'h >= 0/1'); L('h >= 0/1', 'sqrt/1'); L('sqrt/1', 'orifice k/1');
-    L('orifice k/1', 'outflow/1'); L('Drain opened/1', 'outflow/2'); L('outflow/1', 'Net flow/2');
+    L('orifice k/1', 'Outflow model/1'); L('outGravity/1', 'Outflow model/2'); L('constant outflow/1', 'Outflow model/3');
+    L('Outflow model/1', 'outflow/1'); L('Drain opened/1', 'outflow/2'); L('outflow/1', 'Net flow/2');
     L('h (m)/1', 'to percent/1'); L('to percent/1', 'Ping 100 ms/1'); L('Ping 100 ms/1', 'Sensor resolution/1');
     L('to percent/1', 'level_true_pct/1'); L('Sensor resolution/1', 'level_measured_pct/1');
     L('Sensor resolution/1', 'ON-OFF relay/1'); L('ON-OFF relay/1', 'relay to flow/1');

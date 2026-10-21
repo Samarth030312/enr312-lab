@@ -3,7 +3,8 @@ function S = simulate(c)
 %
 %   S = enr312.level.simulate(c)
 %
-%   TANK (ASSUMED):  A dh/dt = q_pump - k_out d sqrt(h),  0 <= h <= H
+%   TANK (ASSUMED):  A dh/dt = q_pump - q_out,  0 <= h <= H
+%     q_out = k_out d sqrt(h) (c.outflow 'gravity') or c.Qout d while h > 0 ('constant')
 %     d = 1, or c.drainFactor after c.tDrain (outlet opened: disturbance)
 %   PUMP: command -> dead time -> first-order spin-up; PWM below pwm_dead gives no flow
 %   SENSOR: HC-SR04 every 0.1 s, distance = h_sensor - h, quantised, noisy
@@ -39,7 +40,7 @@ function S = simulate(c)
                     iNew = I + Ki * Ts * e;
                     uRaw = c.Kp * e + iNew;
                     u = min(max(uRaw, 0), 255);
-                    if u ~= uRaw && Ki ~= 0 && sign(uRaw - u) == sign(e)
+                    if u ~= uRaw && Ki ~= 0 && sign(uRaw - u) == sign(e) && c.antiWindup
                         iNew = min(max(iNew, -c.Kp * e), 255 - c.Kp * e);
                         if (e > 0 && iNew < I) || (e < 0 && iNew > I), iNew = I; end
                         u = min(max(c.Kp * e + iNew, 0), 255);
@@ -51,8 +52,10 @@ function S = simulate(c)
             on = u > 0;
             if on && ~lastOn, starts = starts + 1; end
             lastOn = on;
-            % dry-run guard: commanded near full for t_dry with < 2 % rise => no water reaching the tank
-            if u >= 200
+            % dry-run guard: commanded near full for t_dry with < 2 % rise while well below the
+            % target => no water reaching the tank (same rule as the firmware)
+            target = c.setpoint; if strcmp(c.mode, 'ONOFF'), target = c.Lmax; end
+            if u >= 200 && lvl < target - 5                % below target: a balanced PI at full pump is not dry
                 if isnan(fullSince), fullSince = t; lvlAtFull = lvl; end
                 if t - fullSince > P.t_dry && lvl - lvlAtFull < 2
                     u = 0; pumpOn = false; guard = 'DRY-RUN'; dryLatched = true;
@@ -65,10 +68,12 @@ function S = simulate(c)
         duty = u / 255;
         if strcmp(c.mode, 'ONOFF'), flowCmd = P.Q_max * (u > 0);                 % relay: full on / off
         else, flowCmd = P.Q_max * max(0, (duty - P.pwm_dead) / (1 - P.pwm_dead)); end   % PWM via MOSFET
+        if t >= c.pumpFailAt, flowCmd = 0; end                                      % reservoir empty / pipe blocked
         delayed = cmdBuf(dp); cmdBuf(dp) = flowCmd; dp = mod(dp, nDel) + 1;
         q = q + dt / P.tau_pump * (delayed - q);
         dFac = 1 + (c.drainFactor - 1) * (t >= c.tDrain);
-        qo = P.k_out * dFac * sqrt(max(h, 0));
+        if strcmp(c.outflow, 'constant'), qo = c.Qout / 60000 * dFac * (h > 0);
+        else, qo = P.k_out * dFac * sqrt(max(h, 0)); end
         h = min(max(h + dt / P.A * (q - qo), 0), P.H);
         if mod(k - 1, dec) == 0
             m = m + 1;

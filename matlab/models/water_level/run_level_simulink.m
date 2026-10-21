@@ -5,6 +5,8 @@ function R = run_level_simulink(c, modelDir)
     mdl = 'enr312_water_level';
     if ~isfile(fullfile(here, [mdl '.slx'])), build_level_simulink(here); end
     load_system(fullfile(here, [mdl '.slx'])); cl = onCleanup(@() close_system(mdl, 0));
+    aw = 'clamping'; if isfield(c, 'antiWindup') && ~c.antiWindup, aw = 'none'; end
+    set_param([mdl '/PI'], 'AntiWindupMode', aw);
     w = level_simulink_params(c);
     in = Simulink.SimulationInput(mdl); f = fieldnames(w);
     for k = 1:numel(f), in = in.setVariable(f{k}, w.(f{k}), 'Workspace', mdl); end

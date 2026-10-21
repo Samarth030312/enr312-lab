@@ -25,6 +25,9 @@ g++ -std=c++17 -O1 -I"$tmp" -o "$tmp/tma" "$root/temperature/tests/test_moving_a
 # transcript -> fixture for matlab/tests/test_temperature_transcript.m
 g++ -std=c++17 -O1 -w -include algorithm -I"$root/temperature/tests/host_stubs" -o "$tmp/ttest" "$root/temperature/tests/firmware_host_test.cpp"
 "$tmp/ttest" "$root/temperature/tests/fixtures/temperature_transcript.txt"
+# host test: the real water-level firmware against an emulated tank, pump and HC-SR04 (control + guards)
+g++ -std=c++17 -O1 -w -include algorithm -I"$root/water_level/tests/host_stubs" -o "$tmp/ltest" "$root/water_level/tests/firmware_host_test.cpp"
+"$tmp/ltest" "$root/water_level/tests/fixtures/level_transcript.txt"
 # host test: the real motor firmware against an emulated RMCS-2303; its transcript is
 # the fixture for matlab/tests/test_firmware_transcript.m
 g++ -std=c++17 -O1 -w -include algorithm -I"$root/dc_motor/tests/host_stubs" -o "$tmp/fwtest" "$root/dc_motor/tests/firmware_host_test.cpp"

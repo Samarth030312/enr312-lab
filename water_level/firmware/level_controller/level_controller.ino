@@ -14,13 +14,17 @@
 //   D12  START / STOP pushbutton to GND
 //
 // Geometry: the sensor face is SENSOR_TO_FLOOR_CM above the tank floor and 100 % is
-// FULL_HEIGHT_CM. Change with  $CAL,1,<sensor_to_floor_cm>,<full_height_cm>
+// FULL_HEIGHT_CM. Change with  $CAL,1,<sensor_to_floor_cm>,<full_height_cm>[,<air_C>]
+// Speed of sound v = 331.3 + 0.606 T m/s (air temperature T, default 20 C -> 343.4 m/s);
+// level = sensor_to_floor - v * echo_time / 2 (WATER handout S3-1).
 //
 // GUARDS: pump off above 92 %; latched off after 60 s at >= 200/255 without a 2 %
-// rise (dry run / empty reservoir); off after 5 failed pings; off if MATLAB goes
-// silent for 3 s while it is in control.
+// rise while the level is more than 5 % below its target (Lmax for ON-OFF, the setpoint for
+// P/PI) - dry run / empty reservoir / blocked pipe. The target condition keeps a PI that holds
+// the level with the pump near full speed (big outflow) from tripping. Off after 5 failed
+// pings; off if MATLAB goes silent for 3 s while it is in control.
 //
-// STATUS: compiles; NOT yet run on hardware.
+// STATUS: runs on the PC against an emulated tank + HC-SR04 (water_level/tests); NOT yet run on hardware.
 
 #define FW_NAME "enr312_level"
 #ifndef FW_REV
@@ -39,7 +43,7 @@ const uint8_t F_RUNNING = 1, F_SENSOR = 2, F_OVERFLOW = 4, F_DRY = 8, F_WATCHDOG
 enum Mode : uint8_t { ONOFF, PCTRL, PICTRL };
 const char *MODE_NAMES[] = {"ONOFF", "P", "PI"};
 struct Config { Mode mode = ONOFF; float Lmin = 30, Lmax = 80, setpoint = 50, Kp = 20, Ki = 0.5f; } cfg;
-float sensorToFloor = 30.0f, fullHeight = 25.0f;
+float sensorToFloor = 30.0f, fullHeight = 25.0f, airC = 20.0f;
 
 bool running = false, hostControlled = false, pumpOn = false;
 uint8_t flags = 0, badPings = 0; uint32_t seq = 0, tStart = 0, lastTs = 0, lastHost = 0, fullSince = 0;
@@ -68,7 +72,8 @@ static float pingCm() {
   digitalWrite(PIN_TRIG, LOW); delayMicroseconds(2);
   digitalWrite(PIN_TRIG, HIGH); delayMicroseconds(10); digitalWrite(PIN_TRIG, LOW);
   unsigned long us = pulseIn(PIN_ECHO, HIGH, 25000UL);        // 25 ms ~ 4 m
-  return us ? us * 0.01715f : NAN;                             // 343 m/s, there and back
+  float cmPerUs = (331.3f + 0.606f * airC) / 20000.0f;        // m/s -> cm/us, there and back
+  return us ? us * cmPerUs : NAN;
 }
 
 static float medianOf3() {
@@ -103,8 +108,10 @@ static void handleLine(char *line) {
     ack(t); return;
   }
   if (!strcmp(t, "CAL")) {
-    if (nt != 4) { err(t, 4, "fields"); return; }
-    sensorToFloor = atof(tok[2]); fullHeight = atof(tok[3]); ack(t); return;
+    if (nt != 4 && nt != 5) { err(t, 4, "fields"); return; }
+    sensorToFloor = atof(tok[2]); fullHeight = atof(tok[3]);
+    if (nt == 5) airC = constrain(atof(tok[4]), -10.0f, 50.0f);
+    ack(t); return;
   }
   if (!strcmp(t, "SET")) { if (nt == 3) { cfg.setpoint = min(atof(tok[2]), L_OVER - 5); ack(t); } else err(t, 4, "fields"); return; }
   if (!strcmp(t, "RUN")) {
@@ -151,7 +158,8 @@ static void controlStep(uint32_t now) {
   }
   // guards
   if (level > L_OVER || digitalRead(PIN_FLOAT) == LOW) { duty = 0; flags |= F_OVERFLOW; } else flags &= ~F_OVERFLOW;
-  if (duty >= 200) {
+  float target = (cfg.mode == ONOFF) ? cfg.Lmax : cfg.setpoint;
+  if (duty >= 200 && level < target - 5.0f) {
     if (!fullSince) { fullSince = now; levelAtFull = level; }
     if (now - fullSince > DRY_MS && level - levelAtFull < DRY_RISE) { stopAll(); flags |= F_DRY; err("RUN", 11, "no level rise at full pump: dry run?"); return; }
   } else fullSince = 0;
