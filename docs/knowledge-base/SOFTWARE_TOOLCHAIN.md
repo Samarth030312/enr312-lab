@@ -32,18 +32,30 @@ Install command that was used:
 | `VideoWriter` profiles | Motion JPEG AVI, Motion JPEG 2000, Archival, Uncompressed/Grayscale/Indexed AVI — **no MPEG-4 on Linux**, hence ffmpeg |
 | `serialport` | present (base MATLAB) |
 
-## Arduino toolchain (installed 2026-10-09, isolated)
+## Arduino toolchain (pinned, per project, every OS)
 
-| Tool | Version | Location |
+Since 2026-10-23 the toolchain is installed and used by MATLAB itself, the same way on
+Windows, macOS and Linux (`matlab/functions/+enr312/+tools/`):
+
+| Item | Version | Where it comes from |
 |---|---|---|
-| Arduino CLI | 1.5.1 | `~/Projects/tools/arduino-cli/` — always called through `scripts/setup/acli` |
-| AVR core | arduino:avr 1.8.8 | `~/Projects/tools/arduino-enr312/data` |
-| Libraries | AltSoftSerial 1.4, DHT sensor library 1.4.7, Adafruit Unified Sensor 1.1.15, LiquidCrystal 1.0.7, LiquidCrystal I2C 1.1.2 | `~/Projects/tools/arduino-enr312/user/libraries` |
-| Arduino IDE | 2.3.10 AppImage | `~/Applications/arduino-ide_2.3.10_Linux_64bit.AppImage` (use for the Serial Monitor; compile/upload with `scripts/setup/upload`, which uses the isolated libraries) |
-| `RMCS2303drive` vendor library | 1.0 | read for reference only (SRC-012), not installed; our firmware implements Modbus itself |
+| Arduino CLI | 1.5.1, SHA-256 checked per platform | downloads.arduino.cc; hashes from the release's `1.5.1-checksums.txt`, pinned in `enr312.tools.manifest` |
+| AVR core | arduino:avr 1.8.8 (avr-gcc 7.3.0-atmel3.6.1-arduino7, avrdude 8.0.0-arduino1) | Arduino package index |
+| Libraries | AltSoftSerial 1.4, DHT sensor library 1.4.7, Adafruit Unified Sensor 1.1.15, LiquidCrystal 1.0.7, LiquidCrystal I2C 1.1.2 | Arduino library index |
 
-The isolation (`scripts/setup/arduino-cli.yaml`) keeps these out of `~/.arduino15` and
-`~/Arduino`, so other projects on this laptop are unaffected. Serial access: user is in `dialout`.
+| OS | Tool folder (`enr312.tools.paths`, override with `ENR312_TOOLS`) |
+|---|---|
+| Windows | `%LOCALAPPDATA%\enr312` (`C:\enr312-tools` if that path is not plain ASCII) |
+| macOS | `~/Library/Application Support/enr312` (Apple silicon needs Rosetta 2: avr-gcc and avrdude are x86_64-only builds) |
+| Linux | `~/.local/share/enr312`; on this laptop the earlier `~/Projects/tools` is used |
+
+The CLI gets its folders through `ARDUINO_DIRECTORIES_*` environment variables for each call,
+so no configuration file with machine paths exists and `~/.arduino15` / `Documents\Arduino`
+are never touched. Install or repair: `enr312_doctor fix` in MATLAB. Shell helpers
+(`scripts/setup/acli`, `upload`, `arduino-ide`) read the same folders from `scripts/setup/env.sh`.
+Verified 2026-10-23 on this laptop by a fresh install into an empty folder (download, hash,
+core, libraries) followed by a compile of the motor sketch. The Arduino IDE 2.3.10 AppImage
+(`~/Applications/`) is still used for its Serial Monitor on this laptop only.
 
 ## Not installed (OPEN)
 
@@ -67,7 +79,7 @@ curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.
 ```bash
 cd ~/Projects/enr312-lab
 matlab -batch "cd matlab/tests; results = runtests; assertSuccess(results)"    # 31 tests
-matlab -r "run('matlab/setup_enr312.m'); MotorControlApp"                      # the app
+matlab -r "cd('matlab'); enr312_start"                      # the app
 matlab -batch "run('matlab/setup_enr312.m'); motor_formal_runs(true)"          # evidence + videos
 ```
 
@@ -75,5 +87,5 @@ Product dependencies of the code:
 
 | Code | Needs |
 |---|---|
-| `matlab/functions/+enr312/**`, `MotorControlApp`, all tests except one | base MATLAB |
+| `matlab/functions/+enr312/**`, `enr312_motor`, all tests except the Simulink ones | base MATLAB |
 | `matlab/models/dc_motor/*simulink*`, `test_simulink_crosscheck` | Simulink (test is *skipped*, not failed, without it) |

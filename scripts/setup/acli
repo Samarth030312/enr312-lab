@@ -1,3 +1,11 @@
 #!/usr/bin/env bash
-# arduino-cli bound to the isolated ENR312 configuration.
-exec "$HOME/Projects/tools/arduino-cli/arduino-cli" --config-file "$(dirname "$(readlink -f "$0")")/arduino-cli.yaml" "$@"
+# arduino-cli bound to this project's own cores and libraries (scripts/setup/env.sh).
+#   scripts/setup/acli board list
+# Not installed yet? In MATLAB:  enr312_doctor fix   (or run install/linux/install.sh)
+set -euo pipefail
+. "$(cd "$(dirname "$0")" && pwd)/env.sh"
+if [ ! -x "$ENR312_CLI" ]; then
+  echo "arduino-cli is not installed in $ENR312_TOOLS. In MATLAB run: enr312_doctor fix" >&2
+  exit 127
+fi
+exec "$ENR312_CLI" "$@"

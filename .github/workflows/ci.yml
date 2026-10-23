@@ -1,0 +1,109 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  host:
+    name: Repository checks and firmware host tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Repository hygiene (sources, no copyrighted files or videos)
+        run: python3 scripts/validation/check_repo.py
+      - name: Isolation from other projects
+        run: bash scripts/validation/check_isolation.sh
+      - name: Firmware host tests (the real sketches against emulated drive, bulb and tank)
+        run: bash scripts/validation/host_tests.sh
+      - name: Transcripts used as MATLAB fixtures are reproduced exactly
+        run: git diff --exit-code -- '*/tests/fixtures/*'
+      - name: Installer scripts parse
+        run: bash -n install/linux/install.sh && bash -n install/macos/install.sh
+
+  platforms:
+    name: ${{ matrix.os }} · install, compile, MATLAB tests
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    env:
+      ENR312_NO_LAUNCH: '1'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Installer (Windows, run the way the snippet runs it, in memory)
+        if: runner.os == 'Windows'
+        shell: powershell
+        env:
+          ENR312_DIR: ${{ runner.temp }}\enr312-clone
+        run: Get-Content install\windows\install.ps1 -Raw | Invoke-Expression
+      - name: Installer (macOS)
+        if: runner.os == 'macOS'
+        env:
+          ENR312_DIR: ${{ runner.temp }}/enr312-clone
+        run: bash install/macos/install.sh
+      - name: Installer (Linux)
+        if: runner.os == 'Linux'
+        env:
+          ENR312_DIR: ${{ runner.temp }}/enr312-clone
+        run: bash install/linux/install.sh
+
+      - name: Virtual display for the app tests (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get install -y -qq xvfb
+          Xvfb :99 -screen 0 1920x1080x24 &
+          echo "DISPLAY=:99" >> "$GITHUB_ENV"
+
+      - uses: matlab-actions/setup-matlab@v2
+        with:
+          release: latest
+          products: Simulink
+          cache: true
+
+      - name: Doctor, toolchain install and firmware compile (all three sketches)
+        uses: matlab-actions/run-command@v2
+        with:
+          command: |
+            cd('matlab'); enr312_doctor('fix');
+            for s = ["motor", "temperature", "level"]
+                R = enr312.tools.flash(char(s), '', 'LogDir', tempdir);
+                disp(R.log); assert(R.ok, 'compile of %s failed', s);
+            end
+
+      - name: MATLAB test suite
+        uses: matlab-actions/run-command@v2
+        with:
+          command: cd('matlab'); run('setup_enr312.m'); cd('tests'); results = runtests; disp(table(results)); assertSuccess(results);
+
+      - name: Firmware emulator for the end-to-end test (Linux)
+        if: runner.os == 'Linux'
+        run: g++ -std=c++17 -O1 -w -include algorithm -Idc_motor/tests/host_stubs -o dc_motor/tests/fwsim dc_motor/tests/firmware_host_test.cpp
+      - name: End to end, enr312_motor <-> the real firmware <-> an emulated drive (Linux)
+        if: runner.os == 'Linux'
+        uses: matlab-actions/run-command@v2
+        with:
+          command: cd('matlab'); run('setup_enr312.m'); addpath('tests/e2e'); assert(e2e_motor_mission_control(fullfile(pwd, '..', 'dc_motor', 'tests', 'fwsim')));
+
+  oldest-matlab:
+    name: Oldest supported MATLAB (R2023b) · tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Virtual display for the app tests
+        run: |
+          sudo apt-get install -y -qq xvfb
+          Xvfb :99 -screen 0 1920x1080x24 &
+          echo "DISPLAY=:99" >> "$GITHUB_ENV"
+      - uses: matlab-actions/setup-matlab@v2
+        with:
+          release: R2023b
+          products: Simulink
+          cache: true
+      - name: MATLAB test suite
+        uses: matlab-actions/run-command@v2
+        with:
+          command: cd('matlab'); run('setup_enr312.m'); cd('tests'); results = runtests; disp(table(results)); assertSuccess(results);

@@ -3,7 +3,7 @@
 #   scripts/setup/upload motor|temperature|level [port] [extra -D flags...]
 #   e.g. scripts/setup/upload temperature /dev/ttyACM0 -DLCD_I2C -DDHT_KIND=DHT11
 set -euo pipefail
-root="$(cd "$(dirname "$(readlink -f "$0")")/../.." && pwd)"
+root="$(cd "$(dirname "$0")/../.." && pwd)"
 acli="$root/scripts/setup/acli"
 case "${1:-}" in
   motor)       sketch="$root/dc_motor/firmware/motor_controller" ;;
@@ -20,7 +20,7 @@ if [ -z "$port" ]; then
 fi
 shift $(( $# >= 2 ? 2 : $# ))
 rev="$(git -C "$root" rev-parse --short HEAD 2>/dev/null || echo nogit)"
-[ -z "$(git -C "$root" status --porcelain 2>/dev/null)" ] || rev="$rev-dirty"
+[ -z "$(git -C "$root" status --porcelain --untracked-files=no 2>/dev/null)" ] || rev="$rev-dirty"
 flags="-DFW_REV=\"$rev\" $*"
 echo "Sketch $sketch -> $port  (FW_REV $rev)"
 "$acli" compile --fqbn arduino:avr:uno --build-property "compiler.cpp.extra_flags=$flags" --upload --port "$port" "$sketch"

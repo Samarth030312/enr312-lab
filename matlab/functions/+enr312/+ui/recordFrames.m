@@ -4,31 +4,43 @@ function videoFile = recordFrames(fig, nFrames, drawFrame, outDir, fps)
 %   videoFile = enr312.ui.recordFrames(fig, nFrames, @(j) draw(j), outDir, fps)
 %
 %   drawFrame(j) must update the window for frame j (1..nFrames). Frames are
-%   captured with getframe after drawnow, written as Motion-JPEG AVI (the only
-%   lossy profile MATLAB offers on Linux), then converted to H.264 MP4 with
-%   ffmpeg. If ffmpeg fails the AVI is kept and its name returned, with a warning.
+%   captured with getframe after drawnow. Windows and macOS: written as MPEG-4 by
+%   VideoWriter. Linux (no MPEG-4 profile): Motion-JPEG AVI, converted to H.264 MP4
+%   with ffmpeg; if ffmpeg fails the AVI is kept and its name returned, with a warning.
 %   The file name, size and method are written into <outDir>/run_config.json if
 %   that file exists.
 
     if nargin < 5, fps = 15; end
-    tmp = fullfile(tempdir, sprintf('enr312_rec_%s.avi', char(java.util.UUID.randomUUID)));
-    vw = VideoWriter(tmp, 'Motion JPEG AVI'); vw.FrameRate = fps; vw.Quality = 92;
+    if ~isfolder(outDir), mkdir(outDir); end
+    native = ispc || ismac;                       % VideoWriter writes MP4 itself there
+    if native
+        tmp = fullfile(outDir, 'simulation.mp4');
+        vw = VideoWriter(tmp, 'MPEG-4'); vw.FrameRate = fps; vw.Quality = 92;
+    else
+        tmp = [tempname '.avi'];
+        vw = VideoWriter(tmp, 'Motion JPEG AVI'); vw.FrameRate = fps; vw.Quality = 92;
+    end
     open(vw); cleaner = onCleanup(@() close(vw));
     for j = 1:nFrames
         if ~isvalid(fig), break; end
         drawFrame(j);
         drawnow;
-        writeVideo(vw, getframe(fig));
+        fr = getframe(fig);
+        fr.cdata = fr.cdata(1:2 * floor(end / 2), 1:2 * floor(end / 2), :);   % even size for H.264
+        writeVideo(vw, fr);
     end
     clear cleaner;
-    mp4 = fullfile(outDir, 'simulation.mp4');
-    [st, msg] = system(sprintf(['ffmpeg -y -loglevel error -i "%s" -c:v libx264 -pix_fmt yuv420p ' ...
-        '-vf "scale=trunc(iw/2)*2:trunc(ih/2)*2" "%s"'], tmp, mp4));
-    if st == 0 && isfile(mp4)
-        videoFile = mp4; delete(tmp);
+    if native
+        videoFile = tmp;
     else
-        videoFile = fullfile(outDir, 'simulation.avi'); movefile(tmp, videoFile);
-        warning('enr312:record:ffmpeg', 'ffmpeg conversion failed, kept AVI: %s', msg);
+        mp4 = fullfile(outDir, 'simulation.mp4');
+        [st, msg] = system(sprintf('ffmpeg -y -loglevel error -i "%s" -c:v libx264 -pix_fmt yuv420p "%s"', tmp, mp4));
+        if st == 0 && isfile(mp4)
+            videoFile = mp4; delete(tmp);
+        else
+            videoFile = fullfile(outDir, 'simulation.avi'); movefile(tmp, videoFile);
+            warning('enr312:record:ffmpeg', 'ffmpeg conversion failed, kept AVI: %s', msg);
+        end
     end
     enr312.evidence.attachVideo(outDir, videoFile, fps);
 end

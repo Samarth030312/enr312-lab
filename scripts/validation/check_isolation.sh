@@ -1,27 +1,30 @@
 #!/usr/bin/env bash
 # Check that ENR312 is isolated from other projects on this machine (e.g. the
-# odyssix / STM32 pendulum work): no references, no shared toolchain state.
+# STM32 pendulum work): no shared code, toolchain state or MATLAB path. Links to the
+# sibling repository (github.com/Samarth030312/enr312-rotary-inverted-pendulum) are allowed.
 # Exit 1 on any violation.
 set -uo pipefail
-root="$(cd "$(dirname "$(readlink -f "$0")")/../.." && pwd)"
+root="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$root"
 fail=0
 say() { printf '%-6s %s\n' "$1" "$2"; }
 
-# 1. No references to other projects in code, firmware, data or results.
-#    Allowed: MATLAB_ARCHITECTURE.md (UI style credit),
-#    this script, setup comments and machine paths that merely contain the username.
-hits="$(grep -rniE 'odyssix_stm32|stm32cube|edukit|steval|bfmc|nucleo|EXP00[1-5]' \
-        --include=*.m --include=*.ino --include=*.cpp --include=*.h --include=*.yaml --include=*.json \
-        --include=*.csv --include=*.md --include=*.py --include=*.sh . 2>/dev/null \
-        | grep -vE '^\./(docs/architecture/MATLAB_ARCHITECTURE\.md|scripts/validation/check_isolation\.sh|matlab/setup_enr312\.m|scripts/setup/arduino-cli\.yaml):')"
+# 1. No code or data from other projects in code, firmware, data or results.
+#    Tracked files only. Allowed: MATLAB_ARCHITECTURE.md (UI style credit), this script,
+#    setup comments and machine paths that merely contain the username.
+hits="$(git -C "$root" grep -niE 'odyssix_stm32|stm32cube|edukit|steval|bfmc|nucleo|EXP00[1-5]' -- \
+        '*.m' '*.ino' '*.cpp' '*.h' '*.yaml' '*.json' '*.csv' '*.md' '*.py' '*.sh' 2>/dev/null \
+        | grep -vE '^(docs/architecture/MATLAB_ARCHITECTURE\.md|scripts/validation/check_isolation\.sh|matlab/setup_enr312\.m):')"
 if [ -n "$hits" ]; then say FAIL "references to other projects:"; echo "$hits"; fail=1; else say OK "no references to other projects in code/data/docs"; fi
 
-# 2. Arduino toolchain is the isolated one.
-cfg="$root/scripts/setup/arduino-cli.yaml"
-if grep -q 'arduino-enr312' "$cfg"; then say OK "arduino-cli uses ~/Projects/tools/arduino-enr312 (not ~/.arduino15 or ~/Arduino)"; else say FAIL "arduino-cli config not isolated"; fail=1; fi
+# 2. Arduino toolchain is the project's own (scripts/setup/env.sh, enr312.tools.paths).
+. "$root/scripts/setup/env.sh"
+case "$ARDUINO_DIRECTORIES_DATA" in
+  "$HOME/.arduino15"*|"$HOME/Arduino"*) say FAIL "arduino-cli data folder is the global one"; fail=1 ;;
+  *) say OK "arduino-cli uses $ENR312_TOOLS (not ~/.arduino15 or ~/Arduino)" ;;
+esac
 for lib in "DHT sensor library" "AltSoftSerial"; do
-  [ -d "$HOME/Projects/tools/arduino-enr312/user/libraries/${lib// /_}" ] && say OK "library '$lib' in the isolated sketchbook" || say WARN "library '$lib' not found in the isolated sketchbook"
+  [ -d "$ARDUINO_DIRECTORIES_USER/libraries/${lib// /_}" ] && say OK "library '$lib' in the project sketchbook" || say WARN "library '$lib' not installed yet (MATLAB: enr312_doctor fix)"
 done
 
 # 3. MATLAB path set-up only adds folders inside this repository.

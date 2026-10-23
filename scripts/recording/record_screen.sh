@@ -5,7 +5,7 @@
 # Stop early with Ctrl+C (the file is finalised). Uses ffmpeg x11grab on $DISPLAY (X11).
 # To capture only a window: set REGION="WxH+X+Y" (find it with: xwininfo, click the window).
 set -euo pipefail
-root="$(cd "$(dirname "$(readlink -f "$0")")/../.." && pwd)"
+root="$(cd "$(dirname "$0")/../.." && pwd)"
 sub="${1:?subsystem (e.g. pneumatic)}"; run="${2:?run id (e.g. PNEU-01-FS-001)}"; secs="${3:-120}"
 out="$root/results/evidence/screen_recordings/$sub/$run"
 [ -e "$out/screen.mp4" ] && { echo "refusing to overwrite $out/screen.mp4 (run IDs are never reused)"; exit 1; }

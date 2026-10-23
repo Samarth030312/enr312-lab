@@ -27,8 +27,6 @@ for t in tracked:
         errors.append(f'copyrighted download tracked: {t}')
     if re.search(r'\.(mp4|avi|mov|mkv)$', t):
         errors.append(f'video tracked: {t}')
-    if t.startswith('data/raw/') and not t.endswith('.gitkeep'):
-        print(f'note: raw data tracked deliberately? {t}')
 
 vocab = {'VERIFIED_FROM_MANUAL', 'MEASURED', 'TESTED', 'ESTIMATED', 'ASSUMED', 'UNVERIFIED'}
 params = (ROOT / 'matlab/functions/+enr312/+motor/params.m').read_text()
