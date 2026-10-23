@@ -30,6 +30,8 @@ docs/references/downloads/*
 # Data and results are committed (small CSV/JSON/PNG/logs) so every reported number can be
 # traced to its raw data. Videos are excluded above; build artefacts below.
 dc_motor/tests/fwsim
+temperature/tests/tempsim
+water_level/tests/levelsim
 results/evidence/**/*.mp4
 
 # Local credentials and machine-specific configuration
@@ -44,5 +46,7 @@ results/evidence/**/*.mp4
 Thumbs.db
 
 # compiled firmware simulator (built by scripts/validation/build_firmware.sh)
-dc_motor/tests/fwsim
 results/evidence/logs/arduino_ide.log
+
+# Course handouts and manuals are never published (copyright): keep local copies out of git
+/*.pdf

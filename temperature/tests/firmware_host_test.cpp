@@ -9,11 +9,25 @@
 #include "Arduino.h"
 #include <algorithm>
 #include <string>
+#include <chrono>
+#include <thread>
+#include <fcntl.h>
+#include <unistd.h>
+#include <termios.h>
 
 double g_now_ms = 0;
-uint32_t millis() { return (uint32_t)g_now_ms; }
-uint32_t micros() { return (uint32_t)(g_now_ms * 1000.0); }
-void delay(unsigned long ms) { g_now_ms += ms; }
+static bool g_realtime = false;                 // --pty mode: real wall-clock time
+static double wallMs() {
+  using namespace std::chrono;
+  static auto t0 = steady_clock::now();
+  return duration<double, std::milli>(steady_clock::now() - t0).count();
+}
+uint32_t millis() { if (g_realtime) g_now_ms = wallMs(); return (uint32_t)g_now_ms; }
+uint32_t micros() { millis(); return (uint32_t)(g_now_ms * 1000.0); }
+void delay(unsigned long ms) {
+  if (g_realtime) { std::this_thread::sleep_for(std::chrono::milliseconds(ms)); g_now_ms = wallMs(); return; }
+  g_now_ms += ms;
+}
 static int g_pin[20], g_pwm[20];
 void pinMode(uint8_t p, uint8_t m) { if (m == INPUT_PULLUP) g_pin[p] = HIGH; }
 void digitalWrite(uint8_t p, uint8_t v) { g_pin[p] = v; g_pwm[p] = v ? 255 : 0; }
@@ -63,7 +77,33 @@ static double lastField(int idx) {               // field idx (0-based after the
 }
 static void reset(double T) { send("STOP,1"); runFor(0.2, false); plant.T = T; plant.switches = 0; runFor(1.5, false); }
 
+// --pty [speedup]: run the firmware in real time on a pseudo-terminal so MATLAB can connect to it
+// (end-to-end test of enr312_temp <-> real firmware code <-> emulated bulb). The firmware keeps
+// real time (its 3 s watchdog is real); the bulb's thermal time runs `speedup` times faster.
+static int runPty(double speedup) {
+  g_realtime = true;
+  int m = posix_openpt(O_RDWR | O_NOCTTY);
+  if (m < 0 || grantpt(m) || unlockpt(m)) { perror("pty"); return 2; }
+  fcntl(m, F_SETFL, O_NONBLOCK);
+  int sl = open(ptsname(m), O_RDWR | O_NOCTTY);
+  struct termios tio; tcgetattr(sl, &tio); cfmakeraw(&tio); tcsetattr(sl, TCSANOW, &tio);
+  printf("PTY %s\n", ptsname(m)); fflush(stdout);
+  setup();
+  double lastHello = wallMs(), last = wallMs(); bool heard = false;
+  for (;;) {
+    char b[256]; ssize_t n = read(m, b, sizeof b);
+    for (ssize_t i = 0; i < n; i++) Serial.in.push_back(b[i]);
+    if (n > 0) heard = true;
+    if (!heard && wallMs() - lastHello > 1000) { setup(); lastHello = wallMs(); }
+    loop();
+    double now = wallMs(); plant.step(speedup * (now - last) / 1000.0, g_pwm[PIN_SSR]); last = now;
+    if (!Serial.out.empty()) { ssize_t w = write(m, Serial.out.data(), Serial.out.size()); if (w > 0) Serial.out.erase(0, w); }
+    std::this_thread::sleep_for(std::chrono::microseconds(500));
+  }
+}
+
 int main(int argc, char **argv) {
+  if (argc > 1 && std::string(argv[1]) == "--pty") return runPty(argc > 2 ? atof(argv[2]) : 1.0);
   printf("temperature firmware host test (emulated bulb, DHT11)\n");
   setup(); runFor(2, false);
   CHECK(Serial.out.find("$HELLO,1,enr312_temperature,dev,DHT11*") != std::string::npos, "HELLO reports the DHT11 build");

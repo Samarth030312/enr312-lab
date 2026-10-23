@@ -4,8 +4,10 @@ function mdl = build_temperature_simulink(outDir)
 %   Bulb heater + lumped thermal mass, transport delay, DHT sensor lag, DHT
 %   update (zero-order hold) and resolution (quantiser), and the course
 %   controllers selected by modeSel: 1 on-off, 2 on-off with hysteresis (Relay
-%   block), 3 moving average (Discrete FIR, N taps) + on-off, 4 P with 0..255
-%   clamp. The SSR is modelled by its average power u/255 (the MATLAB model can
+%   block), 3 moving average (Discrete FIR, N taps) + on-off, 4 P clamped to
+%   0..uTop, 5 PI / PID (Discrete PID, output 0..uTop, clamping anti-windup or none,
+%   set per run), 6 open loop (fixed power olPct). An ambient step (ambStep at tAmb)
+%   changes the temperature the zone loses heat to. The SSR is modelled by its average power u/255 (the MATLAB model can
 %   also do the 490 Hz PWM / zero-cross interaction; Simulink does not).
 %   Parameters: model workspace, set by run_temperature_simulink(cfg).
 
@@ -22,6 +24,8 @@ function mdl = build_temperature_simulink(outDir)
     B('simulink/Math Operations/Gain', '1 over C', [710 45 750 75], 'Gain', '1/Cth');
     B('simulink/Continuous/Integrator', 'dT above ambient', [780 45 810 75]);
     B('simulink/Math Operations/Gain', 'loss 1 over R', [700 110 750 140], 'Gain', '1/Rth', 'Orientation', 'left');
+    B('simulink/Math Operations/Sum', 'minus ambient change', [770 110 790 140], 'Inputs', '+-', 'Orientation', 'left');
+    B('simulink/Sources/Step', 'Ambient step', [820 180 850 210], 'Time', 'tAmb', 'Before', '0', 'After', 'ambStep');
     B('simulink/Continuous/Transport Delay', 'Bulb to sensor', [850 45 900 75], 'DelayTime', 'delay');
     B('simulink/Continuous/Transfer Fcn', 'DHT body lag', [930 45 1000 75], 'Denominator', '[tauS 1]');
     B('simulink/Math Operations/Bias', 'plus ambient', [1030 45 1070 75], 'Bias', 'Ta');
@@ -38,18 +42,25 @@ function mdl = build_temperature_simulink(outDir)
     B('simulink/Discrete/Discrete FIR Filter', 'Moving average', [140 320 200 350], 'Coefficients', 'ones(1,N)/N', 'SampleTime', 'Ts');
     B('simulink/Logic and Bit Operations/Relational Operator', 'average below SP', [240 320 280 360], 'Operator', '<');
     B('simulink/Math Operations/Gain', 'Kp', [220 400 260 430], 'Gain', 'Kp');
-    B('simulink/Discontinuities/Saturation', '0..255', [290 400 320 430], 'UpperLimit', '255', 'LowerLimit', '0');
+    B('simulink/Discontinuities/Saturation', '0..255', [290 400 320 430], 'UpperLimit', 'uTop', 'LowerLimit', '0');
+    B('simulink/Discrete/Discrete PID Controller', 'PI or PID', [200 480 280 520], 'Controller', 'PID', 'Form', 'Parallel', ...
+      'P', 'Kp', 'I', 'Ki', 'D', 'Kd', 'N', '1', 'UseFilter', 'on', 'SampleTime', 'Ts', 'IntegratorMethod', 'Forward Euler', ...
+      'FilterMethod', 'Backward Euler', 'LimitOutput', 'on', 'UpperSaturationLimit', 'uTop', 'LowerSaturationLimit', '0', ...
+      'AntiWindupMode', 'clamping');
+    B('simulink/Math Operations/Gain', 'PID over 255', [310 480 350 510], 'Gain', '1/255');
+    B('simulink/Sources/Constant', 'Open-loop power', [310 560 350 580], 'Value', 'olPct/100');
     B('simulink/Math Operations/Rounding Function', 'round', [340 400 370 430], 'Operator', 'round');
     B('simulink/Math Operations/Gain', 'u over 255', [390 400 430 430], 'Gain', '1/255');
     for k = 1:3, B('simulink/Signal Attributes/Data Type Conversion', sprintf('to double %d', k), [300 160 + 90 * (k - 1) 330 190 + 90 * (k - 1)], 'OutDataTypeStr', 'double'); end
     B('simulink/Sources/Constant', 'modeSel', [400 120 440 140], 'Value', 'modeSel');
-    B('simulink/Signal Routing/Multiport Switch', 'Controller select', [480 120 510 440], 'Inputs', '4');
+    B('simulink/Signal Routing/Multiport Switch', 'Controller select', [480 120 510 600], 'Inputs', '6');
     B('simulink/Sinks/Out1', 'zone_T', [940 125 970 140]);
     B('simulink/Sinks/Out1', 'reading', [1300 120 1330 135], 'Port', '2');
     B('simulink/Sinks/Out1', 'heater_fraction', [560 120 590 135], 'Port', '3');
     L = @(a, b) add_line(mdl, a, b, 'autorouting', 'smart');
     L('Heater power/1', 'Heat balance/1'); L('Heat balance/1', '1 over C/1'); L('1 over C/1', 'dT above ambient/1');
-    L('dT above ambient/1', 'loss 1 over R/1'); L('loss 1 over R/1', 'Heat balance/2');
+    L('dT above ambient/1', 'minus ambient change/1'); L('Ambient step/1', 'minus ambient change/2');
+    L('minus ambient change/1', 'loss 1 over R/1'); L('loss 1 over R/1', 'Heat balance/2');
     L('dT above ambient/1', 'Bulb to sensor/1'); L('Bulb to sensor/1', 'DHT body lag/1'); L('DHT body lag/1', 'plus ambient/1');
     L('plus ambient/1', 'DHT update/1'); L('DHT update/1', 'DHT resolution/1'); L('DHT resolution/1', 'Sample 10 ms/1');
     L('dT above ambient/1', 'zone T/1'); L('zone T/1', 'zone_T/1');
@@ -63,10 +74,13 @@ function mdl = build_temperature_simulink(outDir)
     L('modeSel/1', 'Controller select/1');
     L('to double 1/1', 'Controller select/2'); L('to double 2/1', 'Controller select/3');
     L('to double 3/1', 'Controller select/4'); L('u over 255/1', 'Controller select/5');
+    L('Error/1', 'PI or PID/1'); L('PI or PID/1', 'PID over 255/1'); L('PID over 255/1', 'Controller select/6');
+    L('Open-loop power/1', 'Controller select/7');
     L('Controller select/1', 'Heater power/1'); L('Controller select/1', 'heater_fraction/1');
     n = Simulink.Annotation([mdl '/note']);
-    n.Text = ['ENR312 temperature control (Assignment 2). modeSel: 1 on-off, 2 hysteresis relay, 3 moving average, ' ...
-              '4 P (0..255). Thermal parameters ESTIMATED. Set them with run_temperature_simulink(cfg).'];
+    n.Text = ['ENR312 temperature control. modeSel: 1 on-off, 2 hysteresis relay, 3 moving average, 4 P, ' ...
+              '5 PI / PID (limit uTop, anti-windup per run), 6 open loop. Ambient step: ambStep at tAmb. ' ...
+              'Parameters come from enr312_temp (OPEN IN SIMULINK) or run_temperature_simulink(cfg).'];
     n.Position = [40 470 900 500];
     setVars(mdl, temperature_simulink_params(enr312.temperature.defaultConfig()));
     if ~exist(outDir, 'dir'), mkdir(outDir); end

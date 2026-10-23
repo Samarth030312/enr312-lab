@@ -9,6 +9,9 @@ function S = simulate(c)
 %   CONTROLLER every Ts = 0.01 s (course), on the latest reading:
 %     ONOFF / HYST / MA (on a moving average of the last N 10-ms samples) / P / TPROP /
 %     STEP (full power until the reading reaches the setpoint, then off) / PI (clamping)
+%     PID (D on each new sensor reading, filtered; simulation only) / OL (fixed power c.olPct %)
+%   OPTIONS: c.Kd, c.uMaxPct (heater power limit, % of full), c.antiWindup (false: plain
+%     integrator), c.ambStep (C) at c.tAmb (s): a step in the ambient temperature.
 %   SSR: 'pwm490' -- a zero-cross SSR samples the 490 Hz PWM at the start of each
 %        10 ms mains half-cycle, so the delivered power is a pseudo-random set of
 %        half-cycles whose average is ~u/255 (this is the flicker the course asks
@@ -35,6 +38,10 @@ function S = simulate(c)
     delayBuf = repmat(T, nDel, 1); dp = 1;
     W = max(1, round(c.window)); maBuf = zeros(W, 1); maN = 0; maSum = 0; mp = 1;
     heatState = false; lastHeat = false; switches = 0; cutoff = false; stepDone = false; piI = 0;
+    Kd = getf(c, 'Kd', 0); uTop = 255 * getf(c, 'uMaxPct', 100) / 100; aw = getf(c, 'antiWindup', true);
+    ambStep = getf(c, 'ambStep', 0); tAmb = getf(c, 'tAmb', Inf); olPct = getf(c, 'olPct', 100);
+    dTerm = 0; ePrevRd = NaN; newReading = false;
+    TambL = nan(M, 1);
     hAcc = 0; nAcc = 0; m = 0; tReach = NaN;
     phase = 0.37;                                   % PWM vs mains phase, arbitrary
 
@@ -43,7 +50,8 @@ function S = simulate(c)
         % ---------------------------------------------------- sensor
         Tdel = delayBuf(dp);
         Ts = Ts + dt / tau * (Tdel - Ts);
-        if mod(k - 1, nPer) == 0
+        newReading = mod(k - 1, nPer) == 0;
+        if newReading
             Traw = round((Ts + P.noise * randn(rs)) / res) * res;
         end
         if isnan(tReach) && Traw >= c.setpoint - 0.5 && c.setpoint > 0, tReach = t; end
@@ -63,14 +71,21 @@ function S = simulate(c)
             case 'STEP'
                 if Traw >= c.setpoint, stepDone = true; end
                 heatFrac = double(~stepDone);
-            case {'P', 'TPROP', 'PI'}
+            case 'OL'                                           % fixed heater power (open loop)
+                u = round(255 * olPct / 100); heatFrac = u / 255;
+            case {'P', 'TPROP', 'PI', 'PID'}
                 e = c.setpoint - Traw;
-                if strcmp(c.mode, 'PI')                         % same order as the firmware
-                    iNew = piI + c.Ki * dt * e; uRaw = c.Kp * e + iNew;
-                    if ~((uRaw > 255 && e > 0) || (uRaw < 0 && e < 0)), piI = iNew; end
-                    u = min(max(round(c.Kp * e + piI), 0), 255);
+                if strcmp(c.mode, 'PID') && newReading          % D on new readings only (DHT: 1 s)
+                    if ~isnan(ePrevRd), dTerm = 0.5 * dTerm + 0.5 * Kd * (e - ePrevRd) / per; end
+                    ePrevRd = e;
+                end
+                if any(strcmp(c.mode, {'PI', 'PID'}))           % same order as the firmware
+                    dU = dTerm * strcmp(c.mode, 'PID');
+                    iNew = piI + c.Ki * dt * e; uRaw = c.Kp * e + iNew + dU;
+                    if ~aw || ~((uRaw > uTop && e > 0) || (uRaw < 0 && e < 0)), piI = iNew; end
+                    u = min(max(round(c.Kp * e + piI + dU), 0), uTop);
                 else
-                    u = min(max(round(c.Kp * e), 0), 255);
+                    u = min(max(round(c.Kp * e), 0), uTop);
                 end
                 if strcmp(c.mode, 'TPROP')
                     heatFrac = double(mod(t, c.tprop) < u / 255 * c.tprop);
@@ -88,7 +103,8 @@ function S = simulate(c)
         lastHeat = on;
         if isnan(u), u = 255 * heatFrac; end
         % ---------------------------------------------------- plant
-        T = T + dt / P.C_th * (P.eta_heat * P.P_bulb * heatFrac - (T - P.T_amb) / P.R_th);
+        Tamb = P.T_amb + ambStep * (t >= tAmb);
+        T = T + dt / P.C_th * (P.eta_heat * P.P_bulb * heatFrac - (T - Tamb) / P.R_th);
         delayBuf(dp) = T; dp = mod(dp, nDel) + 1;
         % ---------------------------------------------------- log
         hAcc = hAcc + heatFrac; nAcc = nAcc + 1;
@@ -96,12 +112,16 @@ function S = simulate(c)
             m = m + 1;
             tt(m) = t; Tl(m) = T; Tsl(m) = Ts; Trl(m) = Traw; Tfl(m) = Tf;
             el(m) = c.setpoint - Traw; ul(m) = u; hl(m) = hAcc / nAcc; hAcc = 0; nAcc = 0;
-            swl(m) = switches;
+            swl(m) = switches; TambL(m) = Tamb;
         end
     end
     S = struct('t', tt(1:m), 'sp', repmat(c.setpoint, m, 1), 'T', Tl(1:m), 'Tsens', Tsl(1:m), ...
                'Traw', Trl(1:m), 'Tfilt', Tfl(1:m), 'e', el(1:m), 'u', ul(1:m), 'heat', hl(1:m), 'sw', swl(1:m), ...
-               'switches', switches, 'cutoff', cutoff, 'tReach', tReach, 'cfg', c);
+               'switches', switches, 'cutoff', cutoff, 'tReach', tReach, 'Tamb', TambL(1:m), 'cfg', c);
     S.units = struct('temperature', 'degC', 'u', '0..255 (analogWrite)', 'heat', 'on-fraction');
     S.metrics = enr312.temperature.metrics(S);
+end
+
+function v = getf(s, f, d)
+    if isfield(s, f) && ~isempty(s.(f)), v = s.(f); else, v = d; end
 end

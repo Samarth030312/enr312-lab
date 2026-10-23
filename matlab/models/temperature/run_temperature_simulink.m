@@ -6,6 +6,8 @@ function R = run_temperature_simulink(c, modelDir)
     if ~isfile(fullfile(here, [mdl '.slx'])), build_temperature_simulink(here); end
     load_system(fullfile(here, [mdl '.slx'])); cl = onCleanup(@() close_system(mdl, 0));
     w = temperature_simulink_params(c);
+    aw = 'clamping'; if isfield(c, 'antiWindup') && ~c.antiWindup, aw = 'none'; end
+    set_param([mdl '/PI or PID'], 'AntiWindupMode', aw);
     in = Simulink.SimulationInput(mdl); f = fieldnames(w);
     for k = 1:numel(f), in = in.setVariable(f{k}, w.(f{k}), 'Workspace', mdl); end
     tg = (0:0.1:c.Tend);
