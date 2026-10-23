@@ -27,9 +27,8 @@ function [status, out, cmd] = cli(varargin)
     restore = onCleanup(@() restoreEnv(env(:, 1), old));
     parts = [{P.cli}, varargin];
     cmd = strjoin(cellfun(@quoteArg, parts, 'UniformOutput', false), ' ');
-    if ispc
-        cmd = ['"' cmd '"'];          % cmd.exe /c strips one outer pair of quotes
-    end
+    % no extra outer quotes on Windows: MATLAB's system() already hands cmd.exe the whole line
+    % in one pair (an extra pair broke every call there, seen in CI on windows-latest)
     [status, out] = system([cmd ' 2>&1']);
 end
 
