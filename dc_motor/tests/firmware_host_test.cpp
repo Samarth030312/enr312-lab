@@ -197,6 +197,13 @@ int main(int argc, char **argv) {
   CHECK(fabs(lastTelField(5) - 40) < 0.5, "speed PI on encoder counts (loop E) reaches 40 rpm");
   CHECK(lastTelField(8) > 1000, "loop E logs the position counts");
   send("STOP,1"); runFor(100, false);
+  // open loop with encoder-count speed (static map, identification step): u must equal the setpoint
+  send("CFG,1,E,OL,0,0,0,10,100,180"); send("SET,1,20"); send("RUN,1"); runFor(3000, true);
+  printf("        open loop, loop E: u = %.2f, measured %.3f rpm\n", lastTelField(7), lastTelField(5));
+  CHECK(fabs(lastTelField(7) - 20) < 1e-6 && fabs(lastTelField(5) - 20) < 0.5, "open loop with encoder speed commands the setpoint (20 rpm)");
+  send("STOP,1"); runFor(100, false);
+  send("CFG,1,E,PI,0.3,2.5,0,10,100,180"); send("SET,1,40"); send("RUN,1"); runFor(500, true);
+  send("STOP,1"); runFor(100, false);
   send("DIAG,1"); runFor(50, false);
   CHECK(Serial.out.find("# loop time control law us: mean") != std::string::npos &&
         Serial.out.find("# loop time whole sample us: mean") != std::string::npos, "DIAG reports loop time (micros) of the last run");

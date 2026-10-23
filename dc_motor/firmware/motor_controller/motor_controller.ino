@@ -389,8 +389,8 @@ static void controlSample() {
   float e = setpoint - meas, u = 0; bool sat = false;
   if (running) {
     if (!strcmp(cfg.ctrl, "OL")) {
-      if (cfg.loop == 'S') u = setpoint;
-      else {                       // timed move at half speed
+      if (cfg.loop != 'P') u = setpoint;                  // speed loops S and E: command = setpoint
+      else {                       // position: timed move at half speed
         float v = 0.5f * cfg.uMax, tOL = fabs(setpoint) / (6.0f * v);
         u = (t < tOL) ? (setpoint >= 0 ? v : -v) : 0;
       }
