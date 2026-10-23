@@ -1,6 +1,6 @@
 # DC-motor experiments MOTOR-01 … MOTOR-08
 
-**Hardware experiment library** (run from MotorControlApp → Hardware experiments; definitions in
+**Hardware experiment library** (run from `enr312_motor` → mission → RUN ON RIG; definitions in
 `matlab/functions/+enr312/+motor/hwExperiments.m`): MOTOR-02 speed steps open loop (20…120 rpm) ·
 MOTOR-02 direction and reversal · MOTOR-03 speed tracking PI · MOTOR-05 speed P sweep (Kp 0.2/0.5/0.8) ·
 MOTOR-06 speed I only · MOTOR-07 speed PI step · MOTOR-04 position moves P (90, −90, 360°) ·

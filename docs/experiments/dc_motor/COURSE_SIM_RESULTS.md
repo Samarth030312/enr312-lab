@@ -121,5 +121,5 @@ Type 1 means zero error for a LINEAR plant. Real drives have a dead zone (static
 ![fig_S3-12_windup](../../../results/evidence/simulation_runs/dc_motor/MOTOR-COURSE-SIM-20261021-123551/fig_S3-12_windup.png)
 Setpoint 80 rpm with the command limited to 50 rpm: the output saturates and the error stays at 30 rpm. A plain integrator keeps growing; when the setpoint drops to 30 rpm at t = 6 s it must first unwind, so the motor stays at 50 rpm for **10.3 s** before reaching 30 rpm; with clamping it takes **0.5 s**. The same happens with PWM at 255. Code (firmware pidStep, matlab pidStep.m): when the output is saturated and the error pushes further into saturation, stop integrating (`if (sat && sign(uRaw) == sign(e)) iNew = iOld;`). Hardware run: "Course S3-12".
 
-## Pending hardware runs (MotorControlApp -> Hardware experiments)
+## Pending hardware runs (enr312_motor -> mission -> RUN ON RIG)
 Course S3-3 static map; S3-2/S3-4 open-loop step (drive vs encoder); S3-5 10-deg position P; S3-9 I-only Ki sweep; S3-10 designed PI; S3-12 saturation. Then DIAG after any run for S3-6 loop time.

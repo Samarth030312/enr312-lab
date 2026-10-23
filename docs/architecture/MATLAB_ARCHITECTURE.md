@@ -1,52 +1,80 @@
-# MATLAB Architecture
+# MATLAB architecture
 
 ```
 matlab/
-├── setup_enr312.m                     path set-up — run first
+├── enr312_start.m                     one command: path, checks, toolchain, the app
+├── enr312_doctor.m                    check this computer, with the fix for each problem
+├── setup_enr312.m                     path set-up only (repository folders only)
+├── apps/
+│   ├── enr312_motor/enr312_motor.m    DC-motor mission control (this page)
+│   ├── TemperatureControlApp/         temperature (LabWindow layout)
+│   └── WaterLevelApp/                 water level (LabWindow layout)
 ├── functions/+enr312/
-│   ├── repoRoot.m, newRunId.m
+│   ├── doctor.m                       the checks behind enr312_doctor
+│   ├── +tools/                        Arduino toolchain on Windows, macOS, Linux:
+│   │                                  manifest (pinned versions + SHA-256), paths, cli,
+│   │                                  install, flash, gitRev, sha256File
+│   ├── +io/                           SerialLink (protocol v1), arduinoPorts (fast, every OS),
+│   │                                  identifyPorts (USB ids via arduino-cli)
 │   ├── +motor/
-│   │   ├── params.m                   every parameter + status + source
-│   │   ├── defaultConfig.m            runnable config per plant/loop
-│   │   ├── presets.m, presetConfig.m  named experiments (shared by app and batch)
-│   │   ├── pidInit.m, pidStep.m       THE controller law (firmware must match)
-│   │   ├── simulate.m                 bare motor (exact ZOH) and rig (drive model)
-│   │   ├── metrics.m                  rise / overshoot / settling / e_ss / load / verdict
-│   │   ├── exportRun.m                simulation evidence folder
-│   │   ├── exportHardwareRun.m        raw hardware CSV (read-only) + metadata
-│   │   └── HardwareLink.m             serial adapter, protocol v1, PING watchdog
+│   │   ├── missions.m                 the app's missions M1-M9 and LAB
+│   │   ├── hwExperiments.m            the course hardware experiments (presets = their runs)
+│   │   ├── rigModel.m                 the rig identified from its own steps (MEASURED)
+│   │   ├── identifiedSim.m            the Arduino's loop around that model
+│   │   ├── stepMetrics.m              every number of the mission table, sim and rig alike
+│   │   ├── runIndex.m                 every recorded rig run (metadata only)
+│   │   ├── ExperimentRunner.m         plays an experiment on the rig, saves each run
+│   │   ├── HardwareLink.m             $TEL link to the motor firmware
+│   │   ├── pidInit.m, pidStep.m       THE controller law (the firmware matches it)
+│   │   ├── fitIdentified.m            fit K, tau, dead time, ramp to open-loop runs
+│   │   └── params.m, simulate.m, ...  physical model (bare motor, drive estimate)
+│   ├── +ui/                           palette, motorRig + motorRigPose (3-D), recordFrames
 │   └── +protocol/                     encode / parse / checksum / decodeTelemetry / flagNames
-├── apps/MotorControlApp/MotorControlApp.m
-├── models/dc_motor/                   Simulink builder, runner, generated .slx
-├── scripts/motor_formal_runs.m        batch: all presets → evidence, table, figures, videos
-└── tests/                             matlab.unittest, 33 tests (1 needs Simulink)
+├── models/dc_motor/                   Simulink: identified model and physical model
+├── scripts/                           course answers, session reports, batch recordings
+└── tests/                             matlab.unittest (CI on Windows, macOS, Ubuntu);
+    └── e2e/                           the app against the firmware emulator (pty)
 ```
 
-## MotorControlApp
+## enr312_motor: mission control
 
-Programmatic `uifigure` (no App Designer binary), following the layout of the pendulum lab app
-in `odyssix_stm32_core/matlab/experiments/EXP005/exp005_lab.m`: header bar, scrollable control
-column with sections and value-labelled sliders, an animated rig view with a status badge and a
-teaching caption, live plots, a results table with theory checks, and a yellow "Model limits"
-panel that is always visible.
+A programmatic `uifigure` (no App Designer binary) in a dark telemetry theme. Its layout
+follows the sibling [rotary inverted pendulum](https://github.com/Samarth030312/enr312-rotary-inverted-pendulum)
+lab app, re-implemented here (no code is shared).
 
 | Area | Content |
 |---|---|
-| Header | Title; badge **SIMULATION – model, not measured** (blue) or **HARDWARE – live data** (red) |
-| Controls | Data source; preset; plant; loop; controller; RUN; playback speed; *Record video*; Export; setpoint, load step and time; Kp/Ki/Kd (units change with plant/loop); Ts and latency; quantisation; motor/drive physics (ESTIMATED); hardware link (port, connect, Start, Stop-hold, E-STOP, status) |
-| Centre | Verdict badge, caption, signal-chain diagram (who closes which loop), gear-motor side view, output-disc face with angle pointer, setpoint pointer, motion trail, current, base and output speed, load indicator |
-| Right | Output vs setpoint with "what the controller sees" stairs; error; control output with limits; armature current with the 3 A drive limit; the other state (angle or speed) |
-| Bottom | Results table + theory prediction; model limits |
+| Top bar | mission · link chip (OFFLINE / RIG port) · state chip (SIMULATION, READY, RUNNING, STOPPED, FAULT) · firmware and drive id · ● REC · run clock · **ABORT** (also Esc and Space) |
+| Left | MISSION buttons M1-M9 and LAB; one-line purpose; preset (the runs of the mission's course experiment, or "▶▶ all runs"); SPEED / POSITION and DRIVE SPEED / ENCODER COUNTS toggles; controller law, Kp, Ki, command limit, Ts, setpoint profile, run length; ANTI-WINDUP toggle (M6); the identified rig model (K, ramp, latency, tau) with IDENTIFY FROM SELECTED RUN and RESET |
+| Centre | the rig in 3-D: motor, gearbox, drive, Uno, battery and cables; the output disc turns with the measured or simulated angle, a cyan ring shows speed out of 180 rpm, a white tick the speed setpoint, a dashed radius the position setpoint, a wedge the last 80 ms of motion; four live numbers (speed, angle, command, error); one status line |
+| Right | two plots only: the controlled variable (setpoint dashed, simulation grey, rig cyan, replay violet, course model dotted amber) and the command u with its limits; a third, the static map, only in M2 |
+| Bottom | port, CONNECT, FLASH FIRMWARE, DRIVE CHECK, RUN ON RIG, STOP, CLEAR FAULT, PLAY SIMULATION · the SIM / RIG / REF table · LIVE SETPOINT (SEND, ±10, ZERO) · RUNS (filter, OVERLAY RUN, NEXT MISSION, PLAY, speed, scrub) |
 
-Any change re-simulates immediately (≈ 20 ms). RUN replays at real time. Record captures the
-window with `getframe` at 15 fps, writes MJPEG AVI, converts to MP4 with ffmpeg, and exports the
-run evidence into the same folder.
+**Simulation.** `enr312.motor.identifiedSim` with `enr312.motor.rigModel` and the settings on
+the left, rerun 0.25 s after the last change. REF is the course's first-order model (K 1,
+tau 0.72 s, no delay, no quantisation) for the speed missions, the theory the handout uses.
 
-Hardware mode: a 0.1 s `timer` polls `HardwareLink`, plots measured telemetry over the grey
-simulation prediction for the same settings. **Stop and E-STOP send their command first and tidy
-up afterwards**, so they do not depend on the plotting timer. Closing the window sends STOP.
+**Rig.** RUN ON RIG builds a one-run experiment from the settings (or plays the whole course
+experiment for "▶▶ all runs") and hands it to `ExperimentRunner`. A 0.1 s timer polls the link,
+draws the run, poses the 3-D rig, scores the RIG LIVE column and watches for firmware errors.
+A firmware stop (runaway, Modbus loss, host silence, latched fault) ends the run, turns the
+state chip red, says why and what to check, and highlights CLEAR FAULT. Every finished run is
+saved by `exportHardwareRun` (raw CSV read-only, metadata JSON, a PNG of the window).
+
+**Safety.** ABORT, STOP, Esc and Space send STOP first and tidy up after, so they never wait
+for a plot. The firmware stops the drive by itself if it hears nothing for 1 s. Closing the
+window sends STOP. A 1 s port watcher notices the board being plugged in (offers to flash and
+connect) or pulled out (ends the run).
+
+**Flashing.** FLASH FIRMWARE calls `enr312.tools.flash('motor', port)`, which installs the
+pinned toolchain first if needed (`enr312.tools.install`), compiles with the git revision
+compiled in, uploads, and writes a log; the same code runs on Windows, macOS and Linux.
 
 ## Scripting the app
 
-`app = MotorControlApp()` returns handles: `app.preset(name)`, `app.set(name, value)`,
-`app.run()`, `app.export()`, `app.result()`, `app.lastVideo()`.
+`app = enr312_motor()` returns handles and functions:
+`app.selectMission(k)`, `app.setPreset(i)`, `app.set(name, value)`, `app.sim()`,
+`app.metricsTable()`, `app.overlay(runId)`, `app.play('sim' | 'replay')`,
+`app.record(outDir)`, `app.connect(port)`, `app.runRig()`, `app.stop()`, `app.abort()`,
+`app.clearFault()`, `app.diag()`, `app.liveSet(v)`, `app.state()`, `app.runs()`.
+`matlab/tests/test_motor_app.m` and `matlab/tests/e2e/e2e_motor_mission_control.m` use them.

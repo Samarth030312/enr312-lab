@@ -4,7 +4,7 @@
 
 ```
                   USB 115200, protocol v1            Modbus ASCII 9600 (SoftwareSerial D2/D3)
- MotorControlApp  ───────────────────────  Arduino Uno  ─────────────────────────  RMCS-2303
+ enr312_motor     ───────────────────────  Arduino Uno  ─────────────────────────  RMCS-2303
  (MATLAB)          $CFG $SET $RUN $STOP      outer P/I/PI     reg 14 speed cmd       Mode 1 speed loop
    │               $TEL telemetry            Ts ≈ 0.1–0.15 s  reg 20/22/24 feedback     │  M+/M−
    │                                                                                      ▼
@@ -39,4 +39,4 @@ FluidSIM → Circuit 01 / Circuit 02 → saved native model + evidence.
 - MATLAB `+enr312/+motor`: model, controller law, metrics, export — no UI, no I/O.
 - MATLAB `+enr312/+protocol`: framing only — no knowledge of motors.
 - `HardwareLink`: serial I/O only.
-- `MotorControlApp`: UI only; calls the above.
+- `enr312_motor`: UI only; calls the above.

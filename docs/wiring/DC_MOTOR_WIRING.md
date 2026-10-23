@@ -156,30 +156,28 @@ Motor clamped; output shaft free (a tape flag on it to see rotation).
 
 **D. MATLAB**
 
-1. `MotorControlApp` → **Data source: Hardware** → choose `/dev/ttyACM0` (press Refresh if it
-   is missing) → **Connect**. The status line should read
-   `Connected: enr312_motor rev …, RMCS-2303 slave id 11`.
-   If it says "NO DRIVE answered": check 12 V, D8↔pin 3, D9↔pin 2, GND↔pin 1, then press **Drive check**.
-2. **Drive check (read RMCS-2303 registers)**: shows mode, gains, LPR (must read **13**),
-   acceleration, speed. Copy the text into the MOTOR-01 record.
-3. **Plant = Lab rig**, preset **"Rig - speed - open loop (drive only)"**, set the setpoint
-   slider to **20 rpm**, press **Start**. The shaft should turn slowly; the plot shows the
-   measured speed over the grey simulation prediction.
-4. Press **Stop (hold)**: the motor stops and holds. Start again, press **E-STOP**: the motor
-   stops and goes limp. Then test the **D4 button** and the **12 V switch**.
-5. Watchdog: during a run, close the MATLAB app window. The motor must stop within ~1 s.
-6. Direction: with a positive speed command the measured speed must be positive. If the app shows
-   `runaway: wrong way`, swap ONE pair (thin motor leads at 14/15, or yellow/white at 10/11).
-7. **Live driving:** Run length **Until Stop (hardware)**, then **Start**, then move the **Setpoint**
-   slider: the new rpm (−150 … +150, negative = reverse) goes to the motor immediately.
-8. **Hardware experiments** (section in the app): pick one of the 10 (MOTOR-02 … 07), read its
-   description, **Run experiment**. Setpoints play automatically; every run is saved to
-   `data/raw/dc_motor/` (read-only) with metadata. Any firmware error (runaway, Modbus loss)
-   aborts the experiment and shows a red popup. After an E-STOP press **Clear E-STOP**.
+1. `enr312_start` (or `enr312_motor`). Plug in the Uno: the app offers **Flash + connect** or
+   **Connect**. The top bar then shows `RIG <port>` and `fw <rev> · drive id 7`, the state READY.
+   If it says "NO DRIVE answered": check 12 V, D8↔pin 3, D9↔pin 2, GND↔pin 1, then **DRIVE CHECK**.
+2. **DRIVE CHECK** (reads the RMCS-2303 registers): mode, gains, LPR (must read **13**),
+   acceleration, speed, and the measured loop time. It is also written to the session log.
+3. Mission **M1 · Open loop**, preset "Speed steps, open loop" or LAB "speed open loop, 40 rpm",
+   **RUN ON RIG**. The shaft turns; the plot shows the measured speed (cyan) over the grey
+   simulation of the same settings; the 3-D disc turns with the measured angle.
+4. **STOP** (or ABORT, Esc, Space): motor power off. Then test the **D4 button** and the battery switch.
+5. Watchdog: during a run, close the app window. The motor must stop within ~1 s.
+6. Direction: with a positive speed command the measured speed must be positive. If the app reports
+   `runaway: wrong way`, swap ONE pair (thin motor leads at 14/15, or yellow/white at 10/11),
+   then **CLEAR FAULT**.
+7. **Live driving:** mission LAB, **RUN ON RIG**, then type a value under LIVE SETPOINT (or ±10):
+   the new rpm (−150 … +150, negative = reverse) goes to the motor at once.
+8. **Course experiments:** each mission's presets are the runs of its course experiment;
+   "▶▶ all runs" plays the whole series. Every run is saved and listed under RUNS.
 
-Tested end to end on 2026-10-11 against the real firmware code and an emulated drive
-(`matlab/tests/e2e/e2e_motor_app_pty.m`, 10/10): connect, Drive check, live setpoint,
-E-STOP latch, automatic experiment with raw-data export.
+Tested end to end against the real firmware code and an emulated drive
+(`matlab/tests/e2e/e2e_motor_mission_control.m`, 19/19 on 2026-10-23): connect, DRIVE CHECK,
+live setpoint, automatic save, latched fault and CLEAR FAULT, a course experiment, ABORT.
+On the rig: sessions of 2026-10-11 and 2026-10-23.
 
 **If something is wrong**
 
