@@ -41,6 +41,7 @@ function app = enr312_water()
     D.preRun = @(link, v) link.send('CAL', 100 * v.h_sensor, 100 * v.tank_H, v.T_air);
     D.defines = @(v) {};
     D.fromTel = @fromTel;
+    D.simulink = @openSimulink;
     app = enr312.ui.missionControl(D);
 end
 
@@ -260,4 +261,23 @@ function T = fromTel(Traw)
     T.t_s = Traw.t_ms / 1000;
     T.meas = Traw.level_pct;
     T.u_pct = 100 * Traw.u / 255;
+end
+
+function msg = openSimulink(v, P)
+    here = fullfile(enr312.repoRoot(), 'matlab', 'models', 'water_level');
+    mdl = 'enr312_water_level';
+    c = enr312.level.defaultConfig(); c.P = P;
+    for f = {'mode', 'Lmin', 'Lmax', 'setpoint', 'Kp', 'Ki', 'outflow', 'Qout', 'h0', 'Tend', 'olPct', 'tDrain'}
+        c.(f{1}) = v.(f{1});
+    end
+    c.drainFactor = v.valve2 / max(v.valve, 1e-6); c.antiWindup = strcmp(v.aw, 'on');
+    if ~isfile(fullfile(here, [mdl '.slx'])), build_level_simulink(here); end
+    w = level_simulink_params(c);
+    load_system(fullfile(here, [mdl '.slx']));
+    if c.antiWindup, aw = 'clamping'; else, aw = 'none'; end
+    set_param([mdl '/PI'], 'AntiWindupMode', aw);
+    mw = get_param(mdl, 'ModelWorkspace');
+    for f = fieldnames(w)', assignin(mw, f{1}, w.(f{1})); end
+    open_system(mdl);
+    msg = sprintf('%s opened with these settings (no pump curve, guards in MATLAB only): press Run in Simulink.', mdl);
 end

@@ -7,7 +7,8 @@ function mdl = build_level_simulink(outDir)
 %       q_out = Qc d(t)                 constant / pumped outflow (outGravity = 0, pure integrator)
 %   Pump: dead time + first-order spin-up. Sensor: 0.1 s sampling, quantised.
 %   modeSel 1: ON-OFF with the Simulink Relay block (switch off at Lmax, on at
-%   Lmin), as the guideline asks; 2: PI (Discrete PID block, Ki = 0 gives P),
+%   Lmin), as the guideline asks; 2: PI (Discrete PID block, Ki = 0 gives P); 3: open loop
+%   (fixed pump command olPct, through the pump's dead zone),
 %   0..255 with clamping, PWM dead zone. Guards (overflow / dry-run) are in the
 %   firmware and the MATLAB model only.
 
@@ -51,7 +52,8 @@ function mdl = build_level_simulink(outDir)
     B('simulink/Discontinuities/Saturation', 'no reverse flow', [380 155 410 185], 'UpperLimit', 'inf', 'LowerLimit', '0');
     B('simulink/Math Operations/Gain', 'PWM to flow', [420 155 450 185], 'Gain', 'Qmax/(1-dead)');
     B('simulink/Sources/Constant', 'modeSel', [400 100 440 120], 'Value', 'modeSel');
-    B('simulink/Signal Routing/Multiport Switch', 'Controller select', [460 60 490 200], 'Inputs', '2');
+    B('simulink/Signal Routing/Multiport Switch', 'Controller select', [460 60 490 240], 'Inputs', '3');
+    B('simulink/Sources/Constant', 'Open-loop pump flow', [380 220 440 240], 'Value', 'Qol');
     B('simulink/Continuous/Transport Delay', 'Relay + pipe delay', [510 115 560 145], 'DelayTime', 'delay');
     B('simulink/Continuous/Transfer Fcn', 'Pump spin-up', [570 115 610 145], 'Denominator', '[tauP 1]');
     B('simulink/Sinks/Out1', 'level_true_pct', [880 110 910 125]);
@@ -68,6 +70,7 @@ function mdl = build_level_simulink(outDir)
     L('PI/1', 'round/1'); L('round/1', 'duty/1'); L('duty/1', 'minus dead zone/1');
     L('minus dead zone/1', 'no reverse flow/1'); L('no reverse flow/1', 'PWM to flow/1');
     L('modeSel/1', 'Controller select/1'); L('relay to flow/1', 'Controller select/2'); L('PWM to flow/1', 'Controller select/3');
+    L('Open-loop pump flow/1', 'Controller select/4');
     L('Controller select/1', 'Relay + pipe delay/1'); L('Relay + pipe delay/1', 'Pump spin-up/1');
     L('Pump spin-up/1', 'Net flow/1'); L('Pump spin-up/1', 'pump_flow/1');
     n = Simulink.Annotation([mdl '/note']);
