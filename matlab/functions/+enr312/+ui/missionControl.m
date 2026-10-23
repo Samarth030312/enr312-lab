@@ -500,6 +500,10 @@ function app = missionControl(D)
     function T = rigTable()
         T = table(); if link.n == 0, return; end
         T = D.fromTel(link.table());
+        % frames of the previous run can still arrive after RUN (serial buffers): the run is
+        % everything from the last frame numbered 0
+        k0 = find(T.seq == 0, 1, 'last');            % the firmware numbers each run's frames from 0
+        if isempty(k0), T = T([], :); else, T = T(k0:end, :); end
     end
     function hwTick()
         if ~isvalid(fig) || ~link.isOpen(), endRun('link closed', 'ABORTED: link closed'); return; end
@@ -541,6 +545,8 @@ function app = missionControl(D)
     end
     function saveRun(result)
         Traw = link.table(); Traw = Traw(Traw.seq >= 0, :);
+        k0 = find(Traw.seq == 0 & bitand(double(Traw.flags), 1) > 0, 1, 'last');                   % this run only
+        if ~isempty(k0), Traw = Traw(k0:end, :); end
         if isempty(Traw) || height(Traw) == 0, return; end
         cfg = struct('mode', hw.v.(D.modeKey), 'setpoint', hw.v.(D.spKey), 'values', hw.v);
         info = struct('port', char(link.port), 'invalidCount', link.invalidCount, 'seqGaps', link.seqGaps, ...

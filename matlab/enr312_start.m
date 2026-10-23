@@ -2,8 +2,8 @@ function app = enr312_start(which)
 %ENR312_START  One command: set the path, check the computer, install what is missing, open the lab.
 %
 %   enr312_start              DC-motor mission control (enr312_motor)
-%   enr312_start temperature  TemperatureControlApp
-%   enr312_start level        WaterLevelApp
+%   enr312_start temperature  temperature mission control (enr312_temp)
+%   enr312_start water        water-level mission control (enr312_water)
 %   enr312_start none         set-up and checks only
 %
 %   The first time, it installs the project's Arduino toolchain (about 60 MB, into a
@@ -24,8 +24,8 @@ function app = enr312_start(which)
     h = [];
     switch lower(char(which))
         case 'motor',       h = enr312_motor();
-        case 'temperature', h = TemperatureControlApp();
-        case 'level',       h = WaterLevelApp();
+        case {'temperature', 'temp'}, h = enr312_temp();
+        case {'level', 'water'}, h = enr312_water();
         case 'none'
         otherwise, error('enr312:start', 'Unknown app "%s": use motor, temperature, level or none.', which);
     end

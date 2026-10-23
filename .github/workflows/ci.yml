@@ -79,14 +79,18 @@ jobs:
         with:
           command: cd('matlab'); run('setup_enr312.m'); cd('tests'); results = runtests; disp(table(results)); assertSuccess(results);
 
-      - name: Firmware emulator for the end-to-end test (Linux)
+      - name: Firmware emulators for the end-to-end tests (Linux)
         if: runner.os == 'Linux'
-        run: g++ -std=c++17 -O1 -w -include algorithm -Idc_motor/tests/host_stubs -o dc_motor/tests/fwsim dc_motor/tests/firmware_host_test.cpp
-      - name: End to end, enr312_motor <-> the real firmware <-> an emulated drive (Linux)
+        run: bash scripts/validation/host_tests.sh
+      - name: End to end, all three apps <-> their real firmware <-> emulated hardware (Linux)
         if: runner.os == 'Linux'
         uses: matlab-actions/run-command@v2
         with:
-          command: cd('matlab'); run('setup_enr312.m'); addpath('tests/e2e'); assert(e2e_motor_mission_control(fullfile(pwd, '..', 'dc_motor', 'tests', 'fwsim')));
+          command: |
+            cd('matlab'); run('setup_enr312.m'); addpath('tests/e2e');
+            assert(e2e_motor_mission_control(fullfile(pwd, '..', 'dc_motor', 'tests', 'fwsim')));
+            assert(e2e_mission_control('enr312_temp', fullfile(pwd, '..', 'temperature', 'tests', 'tempsim'), 20));
+            assert(e2e_mission_control('enr312_water', fullfile(pwd, '..', 'water_level', 'tests', 'levelsim'), 5));
 
   oldest-matlab:
     name: Oldest supported MATLAB (R2023b) · tests

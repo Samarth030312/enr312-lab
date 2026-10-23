@@ -24,7 +24,10 @@ g++ -std=c++17 -O1 -w -include algorithm -I"$root/water_level/tests/host_stubs" 
 # the fixture for matlab/tests/test_firmware_transcript.m
 g++ -std=c++17 -O1 -w -include algorithm -I"$root/dc_motor/tests/host_stubs" -o "$tmp/fwtest" "$root/dc_motor/tests/firmware_host_test.cpp"
 "$tmp/fwtest" "$root/dc_motor/tests/fixtures/firmware_transcript.txt"
-# keep a copy for the MATLAB end-to-end test (matlab/tests/e2e/e2e_motor_app_pty.m):
-#   matlab -batch "run('matlab/setup_enr312.m'); addpath('matlab/tests/e2e'); e2e_motor_app_pty('$root/dc_motor/tests/fwsim')"
+# keep a copy for the MATLAB end-to-end test (matlab/tests/e2e/e2e_motor_mission_control.m):
+#   matlab -batch "cd matlab; run('setup_enr312.m'); addpath('tests/e2e'); e2e_motor_mission_control('../dc_motor/tests/fwsim')"
 cp "$tmp/fwtest" "$root/dc_motor/tests/fwsim"
 rm -rf "$tmp"
+# real-time emulators for the MATLAB end-to-end tests of enr312_temp and enr312_water (--pty mode)
+g++ -std=c++17 -O1 -w -include algorithm -I"$root/temperature/tests/host_stubs" -o "$root/temperature/tests/tempsim" "$root/temperature/tests/firmware_host_test.cpp"
+g++ -std=c++17 -O1 -w -include algorithm -I"$root/water_level/tests/host_stubs" -o "$root/water_level/tests/levelsim" "$root/water_level/tests/firmware_host_test.cpp"

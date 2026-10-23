@@ -255,7 +255,7 @@ end
 function T = fromTel(Traw)
     % the firmware streams $LTEL all the time; a run is the frames with the RUNNING flag
     run = bitand(double(Traw.flags), 1) > 0;
-    if any(run), Traw = Traw(run, :); end
+    Traw = Traw(run, :);                         % idle frames (before RUN, after STOP) never count
     T = Traw;
     T.t_s = Traw.t_ms / 1000;
     T.meas = Traw.level_pct;
