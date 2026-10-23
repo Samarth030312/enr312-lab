@@ -96,6 +96,28 @@ STOP, CLEAR FAULT, PLAY SIMULATION). Centre: the SIM / RIG / REF table and the L
 row, used while a rig run is going. Right: every recorded run of this mission (or of all), with
 OVERLAY RUN, NEXT MISSION, PLAY and a scrub bar.
 
+### Plants and the datasheet panel
+
+**PLANT** chooses what is simulated:
+
+- **RIG · identified:** the measured black box (gain, drive ramp, Modbus latency), the default.
+- **RIG · drive + motor physics:** the drive's speed loop around the motor equations.
+- **MOTOR · armature voltage:** the bare motor driven by a voltage, without the drive. This is
+  the textbook motor: the command is in volts, the armature current gets its own plot, and the
+  load torque and inertia factor under DISTURBANCE act on it (mission M10).
+
+The **MOTOR · DRIVE · BATTERY** panel takes the datasheet values (rated voltage, no-load speed
+and current, stall current, gear ratio, J, L, drive current limit, battery voltage and capacity)
+and derives R, Kt = Ke, b, the electrical and mechanical time constants, the free speed and
+ω(s)/V(s), shown live under the fields. **OPEN IN SIMULINK** builds the Simulink model with the
+current settings.
+
+### Runs and data
+
+Every rig run gets a number in `data/RUN_REGISTER.csv`, e.g. `MOTOR-R0062_20261024-101500_M5`
+(apparatus, run number, time, mission), including runs the firmware stopped or you aborted.
+**SYNC DATA** commits the new runs, logs and reports and pushes them to GitHub.
+
 ## 4. Your first simulation: M1
 
 Click **M1 · Open loop** and press **PLAY SIMULATION**.

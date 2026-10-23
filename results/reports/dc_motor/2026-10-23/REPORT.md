@@ -79,10 +79,10 @@ The firmware cut motor power 4 time(s) in the recorded runs:
 
 | run | experiment | at t (s) | command (rpm) | measured (rpm) | reason |
 |---|---|---:|---:|---:|---|
-| MOTOR-02-HW-20261023-191737 | S3-2/S3-4 run 2 | 0.2 | 0.0 | -168.2 | runaway: too fast - check encoder and LPR |
-| MOTOR-02-HW-20261023-191408 | S3-3 run 2 | 38.1 | 0.0 | -147.3 | runaway: too fast - check encoder and LPR |
-| MOTOR-02-HW-20261023-190640 | S3-2/S3-4 run 2 | 0.2 | 0.0 | -166.5 | runaway: too fast - check encoder and LPR |
-| MOTOR-02-HW-20261023-190403 | S3-2/S3-4 run 2 | 0.2 | 0.0 | -165.9 | runaway: too fast - check encoder and LPR |
+| MOTOR-R0048_20261023-191737_M1 | S3-2/S3-4 run 2 | 0.2 | 0.0 | -168.2 | runaway: too fast - check encoder and LPR |
+| MOTOR-R0046_20261023-191408_M2 | S3-3 run 2 | 38.1 | 0.0 | -147.3 | runaway: too fast - check encoder and LPR |
+| MOTOR-R0040_20261023-190640_M1 | S3-2/S3-4 run 2 | 0.2 | 0.0 | -166.5 | runaway: too fast - check encoder and LPR |
+| MOTOR-R0035_20261023-190403_M1 | S3-2/S3-4 run 2 | 0.2 | 0.0 | -165.9 | runaway: too fast - check encoder and LPR |
 
 **Observation (cause UNVERIFIED).** The three stops at t = 0.2 s all came at the start of the encoder-feedback run that follows a drive-register open-loop run ending at 0 rpm. The motor really turned backwards at full speed (the encoder count fell by ~1445 counts per 100 ms, about -167 rpm) while 0 rpm was commanded. Two other facts from the session log: the STOP before each of these runs took 1.5 s to be acknowledged instead of the usual 0.35 s (the drive did not answer the first stop write at once), and a similar full-speed reverse start happened at 18:56 with drive feedback (log `hw_session_20261023-185416.log`). The runaway guard caught every case within 0.2 s.
 

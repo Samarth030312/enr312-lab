@@ -1,5 +1,28 @@
 # Changelog
 
+## 2026-10-24: all three rigs, physics from the real parts, one run register
+
+* **Temperature (`enr312_temp`) and water level (`enr312_water`)** mission controls, on a shared
+  engine (`enr312.ui.missionControl`): missions for the TEMP and WATER handouts and Assignment 3,
+  a 3-D scene each (glowing bulb, DHT11, SSR, LCD; tank with water column, pump, flows, HC-SR04,
+  valve), SIM / RIG / REF tables with theory from the physics, OPEN IN SIMULINK, rig runs saved
+  and registered, end-to-end tests against real-time firmware emulators.
+* **Physics from what is on the bench:** `enr312.motor.physics` (datasheet → R, Kt, b, τe, τm,
+  ω(s)/V(s); free speed 168 rpm at 11.2 V, as measured), `enr312.temperature.physics` (bulb W and V,
+  box, wall loss, sensor → K, τ, θ), `enr312.level.physics` (tank, outlet bore and Cd, valve, pump
+  curve → Torricelli k, steady levels, linearised K, τ).
+* **DC motor:** the 3-D rig to the RMCS-5032 drawing, the RMCS-2303 board and the Uno outline;
+  PLANT choice (identified rig, drive physics, bare armature), PID, load-torque step, inertia
+  factor, armature current, battery runtime, mission M10.
+* **Simulation:** temperature PID, open loop, power limit with or without anti-windup, ambient
+  step; water open loop, pump curve, spill, guards switchable; Simulink models for both extended
+  to match (temperature PI/PID, saturation, ambient step; water open loop).
+* **Run register:** every rig run of any apparatus is `<APP>-R<nnnn>_<time>_<mission>` in
+  `data/RUN_REGISTER.csv`, with rig, firmware, port, settings and result; stopped and aborted runs
+  are kept; the 61 motor runs were renamed (old ids still resolve). **SYNC DATA** pushes new runs.
+* `enr312.ident.fitThermal`: K, τ, θ from heating and cooling together.
+* Fix: frames of a previous run or idle frames arriving after RUN no longer end a new run.
+
 ## 2026-10-23: mission control, every operating system, the course on the rig
 
 **DC-motor mission control (`enr312_motor`)** replaces MotorControlApp.
