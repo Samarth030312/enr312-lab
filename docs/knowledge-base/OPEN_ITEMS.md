@@ -26,10 +26,11 @@ quote). Record how it was closed.
 | OI-M5 | Units of the acceleration register (12) | Speed ramp model | Step test in MOTOR-02 | **RESOLVED 2026-10-21**: register 5000 → fitted ramp 53.4 output rpm/s (= 5340 base rpm/s) on 4 open-loop runs: units are base rpm per second (COURSE_SIM_RESULTS S3-4) |
 | OI-M6 | Signedness of speed feedback (register 24) | Reverse speed reading | Run reverse in MOTOR-02 | OPEN |
 | OI-M7 | Whether PPG / PIG / VFFG act in speed mode | ED-M1 option A | Vary gains in Mode 1 on hardware | OPEN |
-| OI-M8 | Real Modbus cycle time on the Uno | Outer-loop Ts (ED-M1) | Timestamp a loop of reads in MOTOR-02 | OPEN |
+| OI-M8 | Real Modbus cycle time on the Uno | Outer-loop Ts (ED-M1) | Timestamp a loop of reads in MOTOR-02 | **CLOSED 2026-10-23**: the firmware's micros() loop timer (DRIVE CHECK) reads 74.4–74.6 ms per 100 ms sample, max 74.7 ms, 0 overruns (`results/evidence/logs/hw_check_20261023-1*.log`) |
 | OI-M9 | R, K_t, J, b of the base motor | All simulation results | MOTOR-02 identification (multimeter for R; speed step for τ) | OPEN — currently ESTIMATED |
 | OI-M10 | Current LPR setting stored in the drive's EEPROM | rpm scaling ×25.7 if wrong | READ_PARAMETER at start of MOTOR-01 | OPEN |
 | OI-M11 | Drive UART logic level vs Uno 5 V | Possible damage to drive RX | Measure TXD idle voltage; vendor confirms direct Uno wiring (p.29) | OPEN |
+| OI-M12 | Full-speed reverse start at RUN (2026-10-23): 3 of 3 starts of the encoder-feedback run that follows a drive-register open-loop run ending at 0 rpm; once more at 18:56 with drive feedback. The STOP before each was acknowledged after 1.5–4.6 s instead of 0.35 s | Safety (the runaway guard caught every case within 0.2 s); S3-2 encoder/register pair not obtained | Firmware: write speed 0 before the speed-mode word at RUN; then repeat "Course S3-2/S3-4" five times ([report](../../results/reports/dc_motor/2026-10-23/REPORT.md#safety-events)) | OPEN, cause UNVERIFIED |
 
 ## Environment
 
@@ -38,6 +39,7 @@ quote). Record how it was closed.
 | OI-E1 | Simulink and Control System Toolbox are licensed (`license('test')` = 1) but were **not installed** on 2026-10-09. Installation via `mpm` started that day — see SOFTWARE_TOOLCHAIN.md. | IN PROGRESS |
 | OI-E2 | Arduino CLI / IDE | CLOSED 2026-10-09: CLI 1.5.1 (isolated) + IDE 2.3.10 |
 | OI-E3 | OBS not installed; ffmpeg 6.x present | OPEN |
+| OI-E4 | Windows and macOS: installer, toolchain, firmware build and MATLAB tests run in CI (`.github/workflows/ci.yml`); no rig session from those systems yet. A colleague's Windows PC showed no COM port on 2026-10-23 (CH340 driver suspected, not confirmed) | OPEN |
 | OI-E4 | Course PDFs and manuals are copyrighted ("may not be reproduced"); kept locally, git-ignored | DECIDED |
 
 ## Temperature / pneumatic
