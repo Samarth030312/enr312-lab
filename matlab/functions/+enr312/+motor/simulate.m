@@ -11,6 +11,7 @@ function S = simulate(c)
 %       P.spd_fb_step_base_rpm) or encoder counts differenced over Ts (c.spdFb 'encoder', bare)
 %     * output clipped to +/- c.uMax with conditional-integration anti-windup
 %     * load-torque step c.dist (N*m at the output shaft) at c.tDist
+%     * setpoint: a step c.setpoint at c.tStep, or c.profile [t, value] rows (held) if given
 %
 %   PLANTS
 %     'bare'  L di/dt = V - R i - Ke w ;  J w' = Kt i - b w - T_L / (N eta)
@@ -65,6 +66,9 @@ function S = simulate(c)
     acc = P.acc_base_rpm_s * P.rpm;
     wMax = P.spd_max_base_rpm * P.rpm;
 
+    hasProf = isfield(c, 'profile') && ~isempty(c.profile);     % [t, setpoint] rows, held
+    if hasProf, prof = c.profile; end
+
     % state: base-side current, speed, angle; drive ramp + integrator
     x = [0; 0; 0]; wr = 0; xi = 0;
     st = enr312.motor.pidInit();
@@ -76,7 +80,11 @@ function S = simulate(c)
     diverged = false; kk = 0;
 
     for k = 1:nS
-        rk = c.setpoint * (t(k) >= c.tStep);
+        if hasProf
+            rk = prof(find(prof(:, 1) <= t(k) + 1e-9, 1, 'last'), 2); if isempty(rk), rk = 0; end
+        else
+            rk = c.setpoint * (t(k) >= c.tStep);
+        end
         TL = c.dist * (t(k) >= c.tDist) / (N * P.eta);
         thDeg = x(3) / N * 180 / pi;
         wRpm  = x(2) / P.rpm / N;

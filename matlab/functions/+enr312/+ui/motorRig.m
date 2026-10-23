@@ -1,83 +1,112 @@
 function rig = motorRig(ax)
-%MOTORRIG  3-D model of the DC-motor rig, for live display in the mission-control app.
+%MOTORRIG  3-D model of the DC-motor rig, true to size, for the mission-control app.
 %
 %   rig = enr312.ui.motorRig(ax)                     % ax: uiaxes
 %   enr312.ui.motorRigPose(rig, angleDeg, speedRpm, opts)
 %
-%   RMCS-5032 gear motor (encoder cap, motor can, 100:1 planetary gearbox) on a bracket,
-%   an indicator disc on the output shaft, the RMCS-2303 drive, the Arduino Uno, the
-%   battery, and the cables between them in the lab's colours (DC_MOTOR_WIRING.md).
-%   A speed ring around the disc shows |speed| out of 180 rpm, with the setpoint as a tick.
-%   Proportions are representative, not measured.
+%   Dimensions (metres in the code, mm below) and their sources:
+%     RMCS-5032 (datasheet mechanical drawing, SRC-003): output shaft D6 x 12 with a D-flat,
+%       mounting boss D20 x 3 with 4 x M3 holes, planetary gearbox D32 x 32, motor section 51
+%       long (neck D27.6, can D30, encoder end 14.5).
+%     Arduino Uno Rev3 (SRC-004): board 68.6 x 53.4, USB-B and barrel-jack positions.
+%     RMCS-2303 (manual photo p.4, SRC-002): square board, 10-way green terminal block
+%       (pins 8-17, 5.08 mm pitch), 7-way white header (pins 1-7), two electrolytics.
+%       Board outline 55 x 55 is read from the photo (UNVERIFIED).
+%     Battery: an 11.1 V 3S pack, 65 x 57 x 19 (ASSUMED: the lab pack is not labelled).
+%     The indicator disc on the shaft (D44) is a display aid, not part of the rig.
+%   Cables in the lab's colours (DC_MOTOR_WIRING.md). The disc turns with the angle; a ring
+%   shows |speed| out of 180 rpm with the setpoint as a tick.
 
     K = enr312.ui.palette();
     hold(ax, 'on'); axis(ax, 'equal'); axis(ax, 'off');
     ax.Color = 'none'; ax.Clipping = 'off';
     try, ax.Toolbar.Visible = 'off'; catch, end
     try, disableDefaultInteractivity(ax); catch, end
-    view(ax, 58, 17);
-    xlim(ax, [-0.16 0.14]); ylim(ax, [-0.12 0.11]); zlim(ax, [0 0.10]);
+    view(ax, 52, 20);
+    xlim(ax, [-0.125 0.105]); ylim(ax, [-0.105 0.095]); zlim(ax, [0 0.075]);
 
-    can = [0.66 0.69 0.73]; gear = [0.78 0.70 0.48]; dark = [0.10 0.11 0.13];
-    pcbG = [0.08 0.30 0.18]; pcbB = [0.02 0.33 0.47]; alu = [0.72 0.75 0.79];
+    can = [0.70 0.72 0.76]; gear = [0.62 0.64 0.67]; dark = [0.09 0.10 0.12];
+    pcbG = [0.05 0.38 0.20]; pcbB = [0.00 0.44 0.55]; alu = [0.78 0.80 0.83]; blk = [0.06 0.06 0.07];
 
-    zA = 0.058;                                                        % shaft axis height
-    box3([-0.01 0 0.005], [0.30 0.22 0.010], [0.12 0.13 0.16], ax);    % base plate
-    box3([0.001 0 0.031], [0.006 0.050 0.042], alu * 0.8, ax);         % motor bracket
-    cyl3([-0.105 0 zA], 0.016, 0.022, dark, ax);                       % encoder cap
-    cyl3([-0.083 0 zA], 0.018, 0.058, can, ax);                        % motor can
-    cyl3([-0.025 0 zA], 0.019, 0.047, gear, ax);                       % planetary gearbox
-    cyl3([0.022 0 zA], 0.004, 0.034, alu, ax);                         % output shaft (6 mm D)
+    zB = 0.006;                                                      % top of the base plate
+    zA = zB + 0.030;                                                 % shaft axis height
+    box3([-0.010 0 zB / 2], [0.235 0.200 zB], [0.13 0.14 0.17], ax); % base plate (display)
+    % L-bracket at the mounting face
+    box3([-0.0055 0 zB + 0.024], [0.004 0.046 0.048], alu * 0.85, ax);
+    box3([-0.0180 0 zB + 0.0015], [0.025 0.046 0.003], alu * 0.85, ax);
+    % RMCS-5032, front face at x = 0, body towards -x
+    cyl3([-0.003 0 zA], 0.010, 0.003, gear * 1.05, ax);              % boss D20 x 3
+    cyl3([-0.035 0 zA], 0.016, 0.032, gear, ax);                     % gearbox D32 x 32
+    cyl3([-0.0425 0 zA], 0.0138, 0.0075, can * 0.9, ax);             % neck D27.6
+    cyl3([-0.0715 0 zA], 0.015, 0.029, can, ax);                     % can D30 x 29
+    cyl3([-0.0860 0 zA], 0.015, 0.0145, dark, ax);                   % encoder end x 14.5
+    cyl3([0 0 zA], 0.003, 0.012, alu, ax);                           % shaft D6 x 12
+    for a = 45:90:315                                                % 4 x M3 on the face
+        cyl3([-0.0005 0.0085 * cosd(a) zA + 0.0085 * sind(a)], 0.0013, 0.0006, blk, ax);
+    end
 
-    % output disc: rotates with the output angle (hgtransform about the x axis)
+    % indicator disc on the shaft: rotates with the output angle (about the x axis)
     rig.disc = hgtransform('Parent', ax);
-    xD = 0.052; R = 0.040;
-    cyl3([xD 0 0], R, 0.006, [0.16 0.18 0.22], rig.disc);
-    for a = 0:30:330                                                   % face ticks every 30 deg
-        L = 0.005 + 0.004 * (mod(a, 90) == 0);
-        plot3(rig.disc, [1 1] * (xD + 0.0065), -[R - 0.002, R - 0.002 - L] * sind(a), [R - 0.002, R - 0.002 - L] * cosd(a), ...
+    xD = 0.008; R = 0.022;
+    cyl3([xD 0 0], R, 0.003, [0.16 0.18 0.22], rig.disc);
+    for a = 0:30:330
+        L = 0.003 + 0.002 * (mod(a, 90) == 0);
+        plot3(rig.disc, [1 1] * (xD + 0.0035), -[R - 0.002, R - 0.002 - L] * sind(a), [R - 0.002, R - 0.002 - L] * cosd(a), ...
               '-', 'Color', K.dim, 'LineWidth', 1 + (mod(a, 90) == 0));
     end
-    rig.marker = patch(rig.disc, 'XData', [1 1 1 1] * (xD + 0.0068), 'YData', [-0.0028 0.0028 0.0028 -0.0028], ...
-        'ZData', [0.004 0.004 R - 0.004 R - 0.004], 'FaceColor', K.orange, 'EdgeColor', 'none');
-    cyl3([xD + 0.006 0 0], 0.006, 0.004, alu, rig.disc);               % hub
+    rig.marker = patch(rig.disc, 'XData', [1 1 1 1] * (xD + 0.0038), 'YData', [-0.0022 0.0022 0.0022 -0.0022], ...
+        'ZData', [0.004 0.004 R - 0.003 R - 0.003], 'FaceColor', K.orange, 'EdgeColor', 'none');
+    cyl3([xD + 0.003 0 0], 0.005, 0.003, alu, rig.disc);
     rig.disc.Matrix = makehgtform('translate', [0 0 zA]);
     rig.trail = patch(ax, 'XData', nan, 'YData', nan, 'ZData', nan, 'FaceColor', K.cyan, ...
         'FaceAlpha', 0.22, 'EdgeColor', 'none');
     rig.ref = plot3(ax, nan, nan, nan, '--', 'Color', K.text, 'LineWidth', 1.6);
-
-    % speed ring: |speed| / 180 rpm as a cyan arc; the setpoint as a white tick
-    Rr = R + 0.008;
+    Rr = R + 0.005;
     th = linspace(0, 2 * pi, 121);
-    plot3(ax, (xD + 0.008) * ones(size(th)), Rr * cos(th), zA + Rr * sin(th), '-', ...
-          'Color', K.line, 'LineWidth', 3);
+    plot3(ax, (xD + 0.004) * ones(size(th)), Rr * cos(th), zA + Rr * sin(th), '-', 'Color', K.line, 'LineWidth', 3);
     rig.ring = plot3(ax, nan, nan, nan, '-', 'Color', K.cyan, 'LineWidth', 4);
     rig.ringSp = plot3(ax, nan, nan, nan, '-', 'Color', K.text, 'LineWidth', 3.5);
-    rig.xRing = xD + 0.009; rig.zA = zA; rig.xFace = xD + 0.007; rig.R = R; rig.Rr = Rr;
+    rig.xRing = xD + 0.0045; rig.zA = zA; rig.xFace = xD + 0.0036; rig.R = R; rig.Rr = Rr;
 
-    % RMCS-2303 drive (front left), Arduino Uno (front right), battery (behind)
-    yF = -0.085;
-    box3([-0.075 yF 0.016], [0.075 0.052 0.012], pcbG, ax);
-    for f = -0.03:0.008:0.03, box3([-0.075 + f yF 0.030], [0.003 0.040 0.016], alu * 0.7, ax); end
-    box3([0.070 yF 0.014], [0.069 0.053 0.008], pcbB, ax);
-    box3([0.092 yF 0.022], [0.016 0.012 0.008], alu * 0.85, ax);      % USB-B socket
-    box3([-0.100 0.075 0.027], [0.070 0.040 0.034], dark, ax);        % battery
-    box3([-0.100 0.075 0.045], [0.070 0.040 0.002], [0.75 0.12 0.12], ax);
+    % RMCS-2303 drive (front left)
+    cD = [-0.062 -0.062]; zP = zB + 0.008;                            % on 8 mm standoffs
+    box3([cD zP], [0.055 0.055 0.0016], pcbG, ax);
+    box3([cD(1) cD(2) + 0.022 zP + 0.006], [0.051 0.010 0.011], [0.10 0.55 0.25], ax);   % terminals 8-17
+    for k = 0:9, cyl3([cD(1) - 0.0229 + k * 0.00508, cD(2) + 0.022, zP + 0.0115], 0.0012, 0.0003, alu, ax); end
+    box3([cD(1) - 0.020 cD(2) - 0.012 zP + 0.004], [0.006 0.018 0.007], [0.92 0.92 0.90], ax); % header 1-7
+    cylZ([cD(1) + 0.012 cD(2) - 0.008 zP], 0.004, 0.010, blk, ax);    % electrolytics
+    cylZ([cD(1) + 0.020 cD(2) - 0.008 zP], 0.004, 0.010, blk, ax);
+    box3([cD(1) - 0.004 cD(2) zP + 0.0015], [0.010 0.010 0.0014], blk, ax);              % ICs
+    box3([cD(1) + 0.010 cD(2) + 0.008 zP + 0.0015], [0.008 0.006 0.0014], blk, ax);
+    % Arduino Uno Rev3 (front right), 68.6 x 53.4
+    cU = [0.060 -0.064];
+    box3([cU zP], [0.0686 0.0534 0.0016], pcbB, ax);
+    box3([cU(1) - 0.0300 cU(2) + 0.012 zP + 0.0063], [0.016 0.012 0.011], alu * 0.9, ax); % USB-B
+    box3([cU(1) - 0.0290 cU(2) - 0.015 zP + 0.0063], [0.014 0.009 0.011], blk, ax);       % barrel jack
+    box3([cU(1) + 0.010 cU(2) - 0.006 zP + 0.002], [0.035 0.0075 0.003], blk, ax);       % ATmega328P
+    box3([cU(1) + 0.004 cU(2) + 0.0245 zP + 0.004], [0.055 0.0025 0.0085], blk, ax);     % header rows
+    box3([cU(1) + 0.008 cU(2) - 0.0245 zP + 0.004], [0.045 0.0025 0.0085], blk, ax);
+    % battery pack (behind, left)
+    cB = [-0.070 0.062 zB + 0.0095];
+    box3(cB, [0.065 0.057 0.019], [0.12 0.14 0.30], ax);
+    box3(cB + [0 0 0.0096], [0.065 0.057 0.0005], [0.22 0.26 0.50], ax);
 
-    % cables (lab colours): battery -> drive, drive -> motor, encoder, Arduino <-> drive
-    cable(ax, [-0.110 0.060 0.044; -0.14 0.00 0.03; -0.105 yF + 0.02 0.024], [0.85 0.15 0.15], 2.4);
-    cable(ax, [-0.090 0.060 0.044; -0.125 0.00 0.03; -0.100 yF + 0.02 0.024], [0.15 0.15 0.15], 2.4);
-    cable(ax, [-0.06 yF + 0.025 0.022; -0.06 -0.03 0.04; -0.06 -0.012 zA], [0.85 0.15 0.15], 2.0);
-    cable(ax, [-0.055 yF + 0.025 0.022; -0.055 -0.03 0.045; -0.055 -0.012 zA], [0.15 0.15 0.15], 2.0);
-    cable(ax, [-0.11 -0.012 zA; -0.10 -0.04 0.035; -0.09 yF + 0.02 0.024], [0.20 0.70 0.30], 1.2);
-    cable(ax, [-0.040 yF - 0.005 0.024; 0.00 yF - 0.015 0.03; 0.040 yF - 0.005 0.02], [0.25 0.45 0.95], 1.2);
-    cable(ax, [-0.040 yF + 0.008 0.024; 0.00 yF + 0.015 0.03; 0.040 yF + 0.008 0.02], [0.95 0.85 0.20], 1.2);
+    % cables: battery -> drive 16/17, drive 14/15 -> motor, encoder 8-11, Uno D8/D9/GND -> drive 1-3
+    tb = [cD(1) cD(2) + 0.022 zP + 0.012];
+    cable(ax, [cB + [0.020 -0.028 0]; -0.070 0.010 0.030; tb + [0.020 0 0]], [0.85 0.15 0.15], 2.4);
+    cable(ax, [cB + [0.028 -0.028 0]; -0.060 0.010 0.028; tb + [0.024 0 0]], [0.15 0.15 0.15], 2.4);
+    cable(ax, [tb + [0.012 0 0]; -0.040 -0.020 0.045; -0.060 -0.008 zA - 0.010], [0.15 0.65 0.30], 1.8);
+    cable(ax, [tb + [0.016 0 0]; -0.036 -0.020 0.047; -0.060 -0.004 zA - 0.012], [0.95 0.85 0.20], 1.8);
+    cable(ax, [tb + [-0.015 0 0]; -0.090 -0.030 0.040; -0.0865 -0.010 zA - 0.006], [0.85 0.15 0.15], 1.0);
+    cable(ax, [tb + [-0.010 0 0]; -0.086 -0.030 0.042; -0.0865 -0.006 zA - 0.010], [0.95 0.55 0.15], 1.0);
+    hdr = [cD(1) - 0.020 cD(2) - 0.012 zP + 0.008];
+    cable(ax, [hdr; 0.000 -0.075 0.030; cU + [-0.010 0.0245] zP + 0.009], [0.25 0.45 0.95], 1.2);
+    cable(ax, [hdr + [0 0.003 0]; 0.000 -0.070 0.032; cU + [-0.007 0.0245] zP + 0.009], [0.20 0.70 0.30], 1.2);
+    cable(ax, [hdr + [0 -0.003 0]; 0.000 -0.080 0.028; cU + [-0.013 0.0245] zP + 0.009], [0.10 0.10 0.10], 1.2);
 
-    rig.labels = [ ...
-        text(ax, -0.075, yF, 0.05, 'RMCS-2303', 'Color', K.dim, 'FontSize', 9, 'HorizontalAlignment', 'center'), ...
-        text(ax, 0.070, yF, 0.035, 'Arduino Uno', 'Color', K.dim, 'FontSize', 9, 'HorizontalAlignment', 'center'), ...
-        text(ax, -0.06, 0.0, zA + 0.035, 'RMCS-5032  100:1', 'Color', K.dim, 'FontSize', 9, 'HorizontalAlignment', 'center'), ...
-        text(ax, -0.10, 0.075, 0.065, 'battery', 'Color', K.dim, 'FontSize', 9, 'HorizontalAlignment', 'center')];
+    lab = @(p, s) text(ax, p(1), p(2), p(3), s, 'Color', K.dim, 'FontSize', 9, 'HorizontalAlignment', 'center');
+    rig.labels = [lab([cD zP + 0.030], 'RMCS-2303'), lab([cU zP + 0.022], 'Arduino Uno'), ...
+                  lab([-0.045 0 zA + 0.026], 'RMCS-5032  100:1'), lab(cB + [0 0 0.020], 'battery 11.1 V')];
     light(ax, 'Position', [0.8 -0.6 1.0]); light(ax, 'Position', [-0.5 0.5 0.6], 'Color', [0.35 0.35 0.40]);
     rig.prev = 0;
     enr312.ui.motorRigPose(rig, 0, 0);
@@ -102,6 +131,14 @@ function cyl3(base, rad, len, col, parent)
         patch(base(1) + e + 0 * th, base(2) + rad * cos(th), base(3) + rad * sin(th), col * 0.92, ...
               'EdgeColor', 'none', 'FaceLighting', 'gouraud', 'Parent', parent);
     end
+end
+
+function cylZ(base, rad, len, col, parent)
+%CYLZ  Upright cylinder (capacitor) from base, along +z.
+    [X, Y, Z] = cylinder(rad, 24); Z = Z * len;
+    surf(X + base(1), Y + base(2), Z + base(3), 'FaceColor', col, 'EdgeColor', 'none', 'FaceLighting', 'gouraud', 'Parent', parent);
+    th = linspace(0, 2 * pi, 25);
+    patch(base(1) + rad * cos(th), base(2) + rad * sin(th), base(3) + len + 0 * th, col * 1.6 + 0.1, 'EdgeColor', 'none', 'Parent', parent);
 end
 
 function cable(ax, P, col, w)

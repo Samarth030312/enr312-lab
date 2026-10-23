@@ -39,7 +39,7 @@ function motorRigPose(rig, angleDeg, speedRpm, opts)
     end
     if isfinite(opts.Setpoint) && abs(opts.Setpoint) > 0
         a = 90 + sign(opts.Setpoint) * 360 * min(abs(opts.Setpoint) / full, 1);
-        rr = rig.Rr + [-0.007 0.007];
+        rr = rig.Rr + [-0.005 0.005];
         set(rig.ringSp, 'XData', rig.xRing * [1 1], 'YData', rr * cosd(a), 'ZData', zA + rr * sind(a));
     else
         set(rig.ringSp, 'XData', nan, 'YData', nan, 'ZData', nan);

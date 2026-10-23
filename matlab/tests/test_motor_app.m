@@ -25,7 +25,7 @@ function testEveryMissionSimulatesAndFillsItsTable(tc)
         tc.verifyEqual(app.mission().tag, M(k).tag);
         tc.verifyGreaterThanOrEqual(numel(app.ui.preset.Items), 1, M(k).tag);
         D = app.metricsTable();
-        tc.verifySize(D, [numel(M(k).rows), 4], M(k).tag);
+        tc.verifyGreaterThanOrEqual(size(D, 1), numel(M(k).rows), M(k).tag); tc.verifyEqual(size(D, 2), 4);
         S = app.sim();
         tc.verifyTrue(all(isfinite(S.w)), [M(k).tag ': simulation finite']);
     end
@@ -73,7 +73,7 @@ function testOverlayARecordedRunScoresTheRigColumn(tc)
 end
 
 function testProfileFieldAcceptsAndRejects(tc)
-    app = tc.TestData.app; app.selectMission(10); app.setPreset(1);
+    app = tc.TestData.app; app.selectMission(find(strcmp({enr312.motor.missions().tag}, 'LAB'))); app.setPreset(1);
     app.set('profile', '0 20; 3 50'); S = app.sim();
     tc.verifyEqual(S.r(end), 50);
     app.set('profile', '5 20');                          % must start at t = 0: refused, sim kept

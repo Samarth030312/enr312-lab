@@ -28,6 +28,7 @@ function app = enr312_motor()
     E = enr312.motor.hwExperiments();
     P0 = enr312.motor.params();
     model = enr312.motor.rigModel(); model0 = model;
+    [~, PD0] = enr312.motor.physics(); spec0 = PD0.spec;            % datasheet values (editable)
     link = enr312.motor.HardwareLink();
     mis = 1; presets = struct([]); profile = [0 60]; Tend = 10;
     S = []; Mref = []; replay = []; runsView = table(); pickedRun = '';
@@ -61,13 +62,14 @@ function app = enr312_motor()
         'Tooltip', 'Motor power off. Esc or Space.');
 
     % ---- left: missions and controls ----------------------------------------------------
-    L = uigridlayout(G, [80 2], 'ColumnWidth', {'1x', '1x'}, 'RowSpacing', 4, 'ColumnSpacing', 6, ...
+    L = uigridlayout(G, [110 2], 'ColumnWidth', {'1x', '1x'}, 'RowSpacing', 4, 'ColumnSpacing', 6, ...
         'Padding', [10 10 10 10], 'BackgroundColor', K.panel, 'Scrollable', 'on');
-    L.Layout.Row = 2; L.Layout.Column = 1; L.RowHeight = repmat({0}, 1, 80); row = 0;
+    L.Layout.Row = 2; L.Layout.Column = 1; L.RowHeight = repmat({0}, 1, 110); row = 0;
     head('MISSION');
-    mg = uigridlayout(L, [5 2], 'Padding', [0 0 0 0], 'RowSpacing', 4, 'ColumnSpacing', 4, ...
-        'RowHeight', repmat({28}, 1, 5), 'BackgroundColor', K.panel);
-    place(mg, next(156), [1 2]);
+    nr = ceil(numel(MIS) / 2);
+    mg = uigridlayout(L, [nr 2], 'Padding', [0 0 0 0], 'RowSpacing', 4, 'ColumnSpacing', 4, ...
+        'RowHeight', repmat({28}, 1, nr), 'BackgroundColor', K.panel);
+    place(mg, next(32 * nr - 4), [1 2]);
     ui.mb = matlab.ui.control.Button.empty;
     for k = 1:numel(MIS)
         ui.mb(k) = uibutton(mg, 'Text', sprintf('%s · %s', MIS(k).tag, MIS(k).short), 'FontWeight', 'bold', ...
@@ -79,6 +81,12 @@ function app = enr312_motor()
     ui.preset = uidropdown(L, 'Items', {'-'}, 'ValueChangedFcn', @(~, ~) applyPreset(), ...
         'BackgroundColor', K.field, 'FontColor', K.text);
     place(ui.preset, next(28), [1 2]);
+    ui.plant = uidropdown(L, 'Items', {'RIG · identified from its runs', 'RIG · drive + motor physics', ...
+        'MOTOR · armature voltage (no drive)'}, 'ItemsData', {'rigId', 'rigPhys', 'arm'}, ...
+        'ValueChangedFcn', @(~, ~) plantChanged(), 'BackgroundColor', K.field, 'FontColor', K.text, ...
+        'Tooltip', ['identified: the measured black box (K, ramp, latency) · physics: the drive''s speed loop and the ' ...
+                    'motor equations from the datasheet panel · armature: the bare motor driven by a voltage, no drive']);
+    place(ui.plant, next(28), [1 2]);
 
     ui.loopGrp = uibuttongroup(L, 'BorderType', 'none', 'BackgroundColor', K.panel, ...
         'SelectionChangedFcn', @(~, ~) structureChanged());
@@ -95,13 +103,14 @@ function app = enr312_motor()
 
     head('CONTROLLER');
     place(lbl(L, 'law', 11.5, K.dim, 'normal'), next(26), 1);
-    ui.ctrl = uidropdown(L, 'Items', {'open loop', 'P', 'I', 'PI'}, 'ItemsData', {'OL', 'P', 'I', 'PI'}, ...
+    ui.ctrl = uidropdown(L, 'Items', {'open loop', 'P', 'I', 'PI', 'PID'}, 'ItemsData', {'OL', 'P', 'I', 'PI', 'PID'}, ...
         'Value', 'PI', 'ValueChangedFcn', @(~, ~) paramChanged(), 'BackgroundColor', K.field, 'FontColor', K.text);
     place(ui.ctrl, row, 2);
     ui.Kp   = field('Kp', [0 5], '%.3f', 0.3);
     ui.Ki   = field('Ki  (1/s)', [0 20], '%.3f', 1.5);
-    ui.uMax = field('command limit (rpm)', [1 180], '%.0f', 180);
-    ui.Ts   = field('sample time Ts (ms)', [50 300], '%.0f', 100);
+    ui.Kd   = field('Kd  (s)', [0 1], '%.4f', 0);
+    ui.uMax = field('command limit (rpm)', [0.5 180], '%.1f', 180);
+    ui.Ts   = field('sample time Ts (ms)', [1 300], '%.0f', 100);
     place(lbl(L, 'setpoint profile', 11.5, K.dim, 'normal'), next(26), 1);
     ui.profile = uieditfield(L, 'text', 'Value', '0 60', 'ValueChangedFcn', @(~, ~) paramChanged(), ...
         'BackgroundColor', K.field, 'FontColor', K.cyan, 'FontName', K.mono, 'HorizontalAlignment', 'right', ...
@@ -115,6 +124,27 @@ function app = enr312_motor()
         'Tooltip', 'Clamping, as in the firmware');
     ui.awOff = uitogglebutton(ui.awGrp, 'Text', 'PLAIN INTEGRATOR', 'Position', [150 2 145 26], ...
         'Tooltip', 'Simulation only: what happens without anti-windup (the firmware always clamps)');
+
+    head('DISTURBANCE');
+    ui.dist  = field('load torque step (N·m)', [-5 5], '%.2f', 0);
+    ui.tDist = field('load applied at t (s)', [0 120], '%.1f', 3);
+    ui.Jf    = field('inertia factor (× J)', [0.2 10], '%.2f', 1);
+
+    head('MOTOR · DRIVE · BATTERY  (datasheet → physics)');
+    ui.pVnom  = field('rated voltage (V)', [1 48], '%.1f', spec0.V_nom);
+    ui.pWnl   = field('no-load speed, output (rpm)', [1 2000], '%.0f', spec0.w_nl_out);
+    ui.pN     = field('gear ratio N (: 1)', [1 1000], '%.0f', spec0.N);
+    ui.pInl   = field('no-load current (A)', [0.01 10], '%.2f', spec0.I_nl);
+    ui.pIst   = field('stall current (A)', [0.1 100], '%.2f', spec0.I_stall);
+    ui.pJ     = field('rotor inertia J (×1e-6 kg·m²)', [0.01 100], '%.2f', 1e6 * spec0.J_rotor);
+    ui.pL     = field('armature inductance L (mH)', [0.01 50], '%.2f', 1e3 * spec0.L);
+    ui.pIdrv  = field('drive current limit (A)', [0.1 30], '%.1f', spec0.I_drive);
+    ui.pVs    = field('battery voltage (V)', [1 48], '%.1f', spec0.V_supply);
+    ui.pCap   = field('battery capacity (mAh, 0 = unknown)', [0 1e5], '%.0f', 0);
+    ui.physTxt = note('', 96); ui.physTxt.FontName = K.mono; ui.physTxt.FontSize = 10.5; ui.physTxt.FontColor = K.dim;
+    ui.resetPhys = btn('RESET TO DATASHEET VALUES', @(~, ~) onResetPhysics(), [1 2], 28);
+    ui.simulink = btn('OPEN IN SIMULINK', @(~, ~) onSimulink(), [1 2], 28);
+    ui.simulink.Tooltip = 'Build the Simulink model with exactly these settings and open it';
 
     head('RIG MODEL  (identified, MEASURED)');
     ui.mK   = field('gain K', [0.2 2], '%.3f', model.K);
@@ -133,15 +163,17 @@ function app = enr312_motor()
     tg = uigridlayout(Cc, [2 4], 'RowHeight', {20, '1x'}, 'Padding', [12 4 12 4], 'RowSpacing', 0, ...
         'BackgroundColor', K.panel);
     names = {'SPEED  rpm', 'ANGLE  deg', 'COMMAND  rpm', 'ERROR'};
-    for k = 1:4, lbl(tg, names{k}, 10, K.dim, 'bold'); end
+    ui.tLbl = gobjects(1, 4);
+    for k = 1:4, ui.tLbl(k) = lbl(tg, names{k}, 10, K.dim, 'bold'); end
     ui.tW = big(tg, K.cyan); ui.tTh = big(tg, K.orange); ui.tU = big(tg, K.text); ui.tE = big(tg, K.text);
     ui.say = lbl(Cc, '', 12.5, K.text, 'normal'); ui.say.HorizontalAlignment = 'center';
 
     % ---- right: plots ------------------------------------------------------------------
-    Pg = uigridlayout(G, [3 1], 'RowHeight', {'1.25x', '1x', 0}, 'Padding', [0 0 0 0], 'RowSpacing', 6, ...
+    Pg = uigridlayout(G, [4 1], 'RowHeight', {'1.25x', '1x', 0, 0}, 'Padding', [0 0 0 0], 'RowSpacing', 6, ...
         'BackgroundColor', K.bg);
     Pg.Layout.Row = 2; Pg.Layout.Column = 3;
-    axY = mkAx(Pg, 'SPEED  (rpm)'); axU = mkAx(Pg, 'COMMAND  u  (rpm at the output shaft)'); axM = mkAx(Pg, 'STATIC MAP');
+    axY = mkAx(Pg, 'SPEED  (rpm)'); axU = mkAx(Pg, 'COMMAND  u  (rpm at the output shaft)');
+    axI = mkAx(Pg, 'ARMATURE CURRENT  (A)'); axM = mkAx(Pg, 'STATIC MAP');
     tr.ref = stairs(axY, nan, nan, '--', 'Color', K.dim, 'LineWidth', 1.2);
     tr.yS = plot(axY, nan, nan, 'Color', K.ghost, 'LineWidth', 1.8);
     tr.yRef = plot(axY, nan, nan, ':', 'Color', K.amber, 'LineWidth', 1.3);
@@ -151,7 +183,9 @@ function app = enr312_motor()
     tr.uR = stairs(axU, nan, nan, 'Color', K.violet, 'LineWidth', 1.4);
     tr.uH = stairs(axU, nan, nan, 'Color', K.orange, 'LineWidth', 1.9);
     tr.uLim = [yline(axU, 180, '--', 'Color', K.dim) yline(axU, -180, '--', 'Color', K.dim)];
-    tr.cur = [xline(axY, nan, 'Color', K.dim) xline(axU, nan, 'Color', K.dim)];
+    tr.iS = plot(axI, nan, nan, 'Color', K.ghost, 'LineWidth', 1.6);
+    tr.iLim = [yline(axI, 3, '--', 'Color', K.dim) yline(axI, -3, '--', 'Color', K.dim)];
+    tr.cur = [xline(axY, nan, 'Color', K.dim) xline(axU, nan, 'Color', K.dim) xline(axI, nan, 'Color', K.dim)];
     tr.mapS = plot(axM, nan, nan, '-', 'Color', K.ghost, 'MarkerFaceColor', K.ghost, 'MarkerSize', 4);
     tr.mapR = plot(axM, nan, nan, 's', 'Color', K.violet, 'MarkerFaceColor', K.violet, 'MarkerSize', 4);
     tr.mapH = plot(axM, nan, nan, 'o', 'Color', K.cyan, 'MarkerFaceColor', K.cyan, 'MarkerSize', 5);
@@ -196,23 +230,26 @@ function app = enr312_motor()
     ui.liveUp = uibutton(lg, 'Text', '+ 10', 'ButtonPushedFcn', @(~, ~) onLiveSet(10));
     ui.liveZero = uibutton(lg, 'Text', 'ZERO', 'ButtonPushedFcn', @(~, ~) onLiveSet(NaN));
 
-    B3 = uigridlayout(G, [3 3], 'RowHeight', {'1x', 30, 30}, 'ColumnWidth', {'1x', '1x', '1x'}, ...
+    B3 = uigridlayout(G, [3 4], 'RowHeight', {'1x', 30, 30}, 'ColumnWidth', {'1x', '1x', '1x', '1x'}, ...
         'Padding', [10 8 10 8], 'RowSpacing', 5, 'ColumnSpacing', 6, 'BackgroundColor', K.panel);
     B3.Layout.Row = 3; B3.Layout.Column = 3;
     ui.runs = uitable(B3, 'ColumnName', {'RUN', 'RESULT', 'SETTINGS'}, 'RowName', {}, ...
         'ColumnWidth', {190, 120, 'auto'}, 'FontSize', 11, 'BackgroundColor', K.panel, 'ForegroundColor', K.text, ...
         'SelectionType', 'row', 'Multiselect', 'off', 'SelectionChangedFcn', @(~, e) onPickRun(e));
-    ui.runs.Layout.Row = 1; ui.runs.Layout.Column = [1 3];
+    ui.runs.Layout.Row = 1; ui.runs.Layout.Column = [1 4];
     ui.runFilter = uidropdown(B3, 'Items', {'this mission', 'all runs'}, 'ValueChangedFcn', @(~, ~) refreshRuns(), ...
         'BackgroundColor', K.field, 'FontColor', K.text);
     ui.overlay = uibutton(B3, 'Text', 'OVERLAY RUN', 'ButtonPushedFcn', @(~, ~) onOverlay(), ...
         'Tooltip', 'Draw the picked run over the simulation of the same settings');
+    ui.sync = uibutton(B3, 'Text', 'SYNC DATA ⇅', 'FontWeight', 'bold', 'ButtonPushedFcn', @(~, ~) onSync(), ...
+        'Tooltip', 'Commit the new rig runs and push them to GitHub (data, logs, reports only)');
     ui.nextBtn = uibutton(B3, 'Text', 'NEXT MISSION ›', 'FontWeight', 'bold', 'ButtonPushedFcn', @(~, ~) selectMission(mod(mis, numel(MIS)) + 1));
     ui.play = uibutton(B3, 'Text', '▶  PLAY', 'FontWeight', 'bold', 'ButtonPushedFcn', @(~, ~) onPlayButton());
     ui.speed = uidropdown(B3, 'Items', {'0.5x', '1x', '2x', '4x'}, 'Value', '1x', ...
         'BackgroundColor', K.field, 'FontColor', K.text);
     ui.scrub = uislider(B3, 'Limits', [0 10], 'MajorTicks', [], 'MinorTicks', [], ...
         'ValueChangingFcn', @(~, e) onScrub(e.Value), 'ValueChangedFcn', @(s, ~) onScrub(s.Value));
+    ui.scrub.Layout.Column = [3 4];
 
     styleButtons(fig);
     ui.abort.BackgroundColor = K.red; ui.abort.FontColor = 'w';
@@ -234,7 +271,7 @@ function app = enr312_motor()
         'overlay', @overlayRun, 'runs', @getRuns, 'play', @startPlay, 'connect', @connectTo, ...
         'runRig', @onRunRig, 'stop', @onStop, 'abort', @doAbort, 'clearFault', @onClearFault, ...
         'diag', @onDiag, 'liveSet', @liveTo, 'state', @getHw, 'link', @getLink, ...
-        'mission', @getMission, 'model', @getModel, 'record', @recordVideo);
+        'mission', @getMission, 'model', @getModel, 'record', @recordVideo, 'simulink', @onSimulink);
 
     % =================================================================== missions, presets
     function selectMission(k)
@@ -250,9 +287,7 @@ function app = enr312_motor()
         presets = presetList(M);
         ui.preset.Items = {presets.label}; ui.preset.ItemsData = 1:numel(presets);
         ui.preset.Value = 1;
-        isMap = strcmp(M.kind, 'map');
-        if isMap, Pg.RowHeight = {'1x', '0.8x', '1x'}; else, Pg.RowHeight = {'1.25x', '1x', 0}; end
-        axM.Visible = onoff(isMap); set(axM.Children, 'Visible', onoff(isMap));   % children too
+        layoutPlots();
         ui.awGrp.Visible = strcmp(M.kind, 'windup');
         clearReplay();
         applyPreset();
@@ -275,6 +310,17 @@ function app = enr312_motor()
                     'spec', specFrom(x.runs(1), x), 'series', x); %#ok<AGROW>
             end
         end
+        if strcmp(M.kind, 'physics')                    % the bare motor, voltage-driven
+            L = struct('label', {'open loop: voltage step (speed and current)', 'speed PID', 'speed PI, load torque step at 1 s', ...
+                                  'speed PI, inertia x1.5', 'position PID', 'position PID, load torque step at 1.5 s'}, ...
+                'spec', {phys('speed', 'OL', 0, 0, 0, [0 0; 0.1 90], 1, 0, 1, 1), ...
+                         phys('speed', 'PID', 0.05, 1.0, 0.0002, [0 0; 0.1 100], 1.5, 0, 1, 1), ...
+                         phys('speed', 'PI', 0.05, 1.0, 0, [0 0; 0.1 100], 2, 1.0, 1, 1), ...
+                         phys('speed', 'PI', 0.05, 1.0, 0, [0 0; 0.1 100], 1.5, 0, 1, 1.5), ...
+                         phys('position', 'PID', 0.3, 0.5, 0.01, [0 0; 0.1 90], 2, 0, 1, 1), ...
+                         phys('position', 'PID', 0.3, 0.5, 0.01, [0 0; 0.1 90], 3, 1.0, 1.5, 1)}, ...
+                'series', {[], [], [], [], [], []});
+        end
         if isempty(L)                                   % LAB
             L = struct('label', {'speed PI, 60 rpm', 'speed P, Kp 0.5', 'speed open loop, 40 rpm', ...
                                   'position P, 90 deg', 'position PI, 90 deg'}, ...
@@ -285,12 +331,19 @@ function app = enr312_motor()
     end
 
     function s = specFrom(r, x)
-        s = struct('loop', r.loop, 'ctrl', r.ctrl, 'Kp', r.Kp, 'Ki', r.Ki, 'profile', r.profile, ...
-            'Tend', r.duration, 'spdFb', r.spdFb, 'uMax', r.uMax, 'experiment', x.id, 'name', x.name);
+        s = struct('loop', r.loop, 'ctrl', r.ctrl, 'Kp', r.Kp, 'Ki', r.Ki, 'Kd', 0, 'profile', r.profile, ...
+            'Tend', r.duration, 'spdFb', r.spdFb, 'uMax', r.uMax, 'experiment', x.id, 'name', x.name, ...
+            'plant', 'rigId', 'dist', 0, 'tDist', 3, 'Jf', 1);
     end
     function s = lab(loop, ctrl, Kp, Ki, prof, T)
-        s = struct('loop', loop, 'ctrl', ctrl, 'Kp', Kp, 'Ki', Ki, 'profile', prof, 'Tend', T, ...
-            'spdFb', 'drive', 'uMax', NaN, 'experiment', 'MOTOR-LAB', 'name', 'LAB');
+        s = struct('loop', loop, 'ctrl', ctrl, 'Kp', Kp, 'Ki', Ki, 'Kd', 0, 'profile', prof, 'Tend', T, ...
+            'spdFb', 'drive', 'uMax', NaN, 'experiment', 'MOTOR-LAB', 'name', 'LAB', ...
+            'plant', 'rigId', 'dist', 0, 'tDist', 3, 'Jf', 1);
+    end
+    function s = phys(loop, ctrl, Kp, Ki, Kd, prof, T, dist, tDist, Jf)
+        s = struct('loop', loop, 'ctrl', ctrl, 'Kp', Kp, 'Ki', Ki, 'Kd', Kd, 'profile', prof, 'Tend', T, ...
+            'spdFb', 'encoder', 'uMax', NaN, 'experiment', 'MOTOR-SIM', 'name', 'armature model', ...
+            'plant', 'arm', 'dist', dist, 'tDist', tDist, 'Jf', Jf);
     end
 
     function setPresetByIndex(i), ui.preset.Value = i; applyPreset(); end
@@ -300,10 +353,11 @@ function app = enr312_motor()
         setToggle(ui.loopGrp, strcmp(p.loop, 'speed'), ui.loopSpeed, ui.loopPos);
         setToggle(ui.fbGrp, ~strcmp(p.spdFb, 'encoder'), ui.fbDrive, ui.fbEnc);
         setToggle(ui.awGrp, true, ui.awOn, ui.awOff);
-        ui.ctrl.Value = p.ctrl; ui.Kp.Value = p.Kp; ui.Ki.Value = p.Ki;
-        c0 = enr312.motor.defaultConfig('rig', p.loop);
-        um = p.uMax; if isnan(um), um = c0.uMax; end
-        ui.uMax.Value = um; ui.Ts.Value = 1000 * c0.Ts; ui.mLat.Value = 1000 * c0.latency;
+        ui.plant.Value = p.plant;
+        ui.ctrl.Value = p.ctrl; ui.Kp.Value = p.Kp; ui.Ki.Value = p.Ki; ui.Kd.Value = p.Kd;
+        ui.dist.Value = p.dist; ui.tDist.Value = p.tDist; ui.Jf.Value = p.Jf;
+        plantDefaults(p.loop);
+        if ~isnan(p.uMax), ui.uMax.Value = p.uMax; end
         ui.profile.Value = profileText(p.profile); ui.Tend.Value = p.Tend;
         structureChanged(true);
     end
@@ -318,20 +372,49 @@ function app = enr312_motor()
             axY.Title.String = 'ANGLE  (deg at the output shaft)';
         end
         ui.liveSp.Limits = [-360 360];
+        ui.fbGrp.Visible = isSpd && ~strcmp(ui.plant.Value, 'arm');
         if ~fromPreset
-            c0 = enr312.motor.defaultConfig('rig', ternary(isSpd, 'speed', 'position'));
-            ui.Ts.Value = 1000 * c0.Ts; ui.mLat.Value = 1000 * c0.latency;
+            plantDefaults(ternary(isSpd, 'speed', 'position'));
             if ~isSpd && strcmp(ui.ctrl.Value, 'OL'), ui.ctrl.Value = 'P'; end
         end
+        layoutPlots();
         paramChanged(true);
+    end
+
+    function plantDefaults(loop)
+        % sample time, latency and command limit that belong to the chosen plant
+        if strcmp(ui.plant.Value, 'arm')
+            ui.Ts.Value = 10; ui.mLat.Value = 0; ui.uMax.Value = ui.pVs.Value;
+            axU.Title.String = 'COMMAND  u  (armature voltage, V)';
+            ui.uMax.UserData.Text = 'command limit (V)'; ui.tLbl(3).Text = 'COMMAND  V';
+        else
+            c0 = enr312.motor.defaultConfig('rig', loop);
+            ui.Ts.Value = 1000 * c0.Ts; ui.mLat.Value = 1000 * c0.latency; ui.uMax.Value = c0.uMax;
+            axU.Title.String = 'COMMAND  u  (rpm at the output shaft)';
+            ui.uMax.UserData.Text = 'command limit (rpm)'; ui.tLbl(3).Text = 'COMMAND  rpm';
+        end
+    end
+
+    function plantChanged()
+        plantDefaults(ternary(ui.loopSpeed.Value, 'speed', 'position'));
+        if strcmp(ui.plant.Value, 'arm') && strcmp(ui.ctrl.Value, 'OL') && ~ui.loopSpeed.Value, ui.ctrl.Value = 'P'; end
+        structureChanged(true);
+    end
+
+    function layoutPlots()
+        isMap = strcmp(MIS(mis).kind, 'map');
+        isPhys = ~strcmp(ui.plant.Value, 'rigId');
+        Pg.RowHeight = {'1.25x', '1x', ternary(isPhys, '0.85x', 0), ternary(isMap, '1x', 0)};
+        axI.Visible = onoff(isPhys); set(axI.Children, 'Visible', onoff(isPhys));
+        axM.Visible = onoff(isMap); set(axM.Children, 'Visible', onoff(isMap));   % children too
     end
 
     % =================================================================== parameters, simulation
     function f = field(label, lims, fmt, v)
-        place(lbl(L, label, 11.5, K.dim, 'normal'), next(26), 1);
+        h = lbl(L, label, 11.5, K.dim, 'normal'); place(h, next(26), 1);
         f = uieditfield(L, 'numeric', 'Value', v, 'Limits', lims, 'ValueDisplayFormat', fmt, ...
             'BackgroundColor', K.field, 'FontColor', K.cyan, 'FontName', K.mono, ...
-            'HorizontalAlignment', 'right', 'ValueChangedFcn', @(~, ~) paramChanged());
+            'HorizontalAlignment', 'right', 'ValueChangedFcn', @(~, ~) paramChanged(), 'UserData', h);
         place(f, row, 2);
     end
 
@@ -349,13 +432,25 @@ function app = enr312_motor()
         if now, update(); else, start(simTimer); end
     end
 
+    function sp = specFromUi()
+        sp = struct('V_nom', ui.pVnom.Value, 'w_nl_out', ui.pWnl.Value, 'N', ui.pN.Value, 'I_nl', ui.pInl.Value, ...
+            'I_stall', ui.pIst.Value, 'J_rotor', ui.pJ.Value * 1e-6, 'L', ui.pL.Value * 1e-3, ...
+            'I_drive', ui.pIdrv.Value, 'V_supply', ui.pVs.Value, 'J_factor', ui.Jf.Value, ...
+            'capacity_mAh', ternary(ui.pCap.Value > 0, ui.pCap.Value, NaN));
+    end
+
     function c = readCfg()
-        isSpd = ui.loopSpeed.Value;
-        c = enr312.motor.defaultConfig('rig', ternary(isSpd, 'speed', 'position'));
-        c.ctrl = ui.ctrl.Value; c.Kp = ui.Kp.Value; c.Ki = ui.Ki.Value; c.Kd = 0;
-        c.uMax = ui.uMax.Value; c.Ts = ui.Ts.Value / 1000;
-        c.latency = min(round(ui.mLat.Value) / 1000, c.Ts);
-        c.spdFb = ternary(isSpd && ui.fbEnc.Value, 'encoder', 'drive');
+        isSpd = ui.loopSpeed.Value; pk = ui.plant.Value;
+        c = enr312.motor.defaultConfig(ternary(strcmp(pk, 'arm'), 'bare', 'rig'), ternary(isSpd, 'speed', 'position'));
+        c.plantKey = pk;
+        c.ctrl = ui.ctrl.Value; c.Kp = ui.Kp.Value; c.Ki = ui.Ki.Value;
+        c.Kd = ternary(strcmp(c.ctrl, 'PID'), ui.Kd.Value, 0);
+        c.uMax = ui.uMax.Value; c.Ts = max(c.dt, round(ui.Ts.Value) / 1000);
+        c.latency = round(min(ui.mLat.Value / 1000, c.Ts) / c.dt) * c.dt;
+        c.spdFb = ternary(isSpd && (ui.fbEnc.Value || strcmp(pk, 'arm')), 'encoder', 'drive');
+        c.dist = ui.dist.Value; c.tDist = ui.tDist.Value;
+        [c.P, PD] = enr312.motor.physics(specFromUi()); c.PD = PD;
+        c.profile = profile; c.tStep = 0;
         c.antiWindup = ~ui.awOff.Value;
         c.Tend = ui.Tend.Value;
         c.setpoint = profile(1, 2);
@@ -375,10 +470,19 @@ function app = enr312_motor()
         if ~strcmp(c.loop, 'speed') && strcmp(c.ctrl, 'OL')
             say('Open loop is a speed experiment: choose P, I or PI for position.', 'warn'); return;
         end
-        S = enr312.motor.identifiedSim(model, c, profile, Tend);
+        showPhysics(c.PD);
+        if strcmp(c.plantKey, 'rigId')
+            if c.dist ~= 0 || ui.Jf.Value ~= 1
+                say('The identified model has no load torque or inertia: choose a physics plant to see them.', 'warn');
+            end
+            S = enr312.motor.identifiedSim(model, c, profile, Tend);
+        else
+            S = fromPhysics(enr312.motor.simulate(c), c);
+            if S.diverged, say('The simulation diverged: the loop is unstable with these gains.', 'warn'); end
+        end
         S.y = yOf(S); S.ang = S.thOut;
         Mref = [];
-        if strcmp(c.loop, 'speed') && any(strcmp(MIS(mis).kind, {'step', 'lab'}))
+        if strcmp(c.plantKey, 'rigId') && strcmp(c.loop, 'speed') && any(strcmp(MIS(mis).kind, {'step', 'lab'}))
             m1 = struct('K', 1, 'tau', 0.72, 'theta', 0, 'acc', Inf, 'dz', 0, 'qSpd', 0);
             c1 = c; c1.latency = 0; c1.quant = false;
             Mref = enr312.motor.identifiedSim(m1, c1, profile, Tend);
@@ -386,6 +490,64 @@ function app = enr312_motor()
         drawSim();
         fillTable();
         if ~hw.on, poseAt('sim', Tend); end
+    end
+
+    function T = fromPhysics(Sp, c)
+        % enr312.motor.simulate output in the shape the app draws (as identifiedSim's)
+        k = min(numel(Sp.t), round(Sp.tk / c.dt) + 1);
+        T = struct('t', Sp.t, 'w', Sp.w_rpm, 'thOut', Sp.th_deg, 'i', Sp.i, 'tk', Sp.tk, 'r', Sp.r(k), ...
+            'meas', Sp.ym, 'u', Sp.uk, 'e', Sp.e, 'uFine', Sp.u, 'diverged', Sp.diverged, 'cfg', c);
+        n = find(isfinite(T.w), 1, 'last'); T.w(n + 1:end) = NaN;
+        % electrical power drawn: (back-EMF + R i) i, base side; battery current = power / supply voltage
+        P = c.P; wB = T.w * P.N * P.rpm; pe = max(0, (P.Ke * wB + P.R * T.i) .* T.i);
+        T.iBatt = mean(pe(isfinite(pe))) / P.V_supply;
+    end
+
+    function showPhysics(D)
+        ui.physTxt.Text = sprintf(['R %.2f ohm   Kt = Ke %.4f N·m/A\nb %.2e N·m·s   J %.2e kg·m²\n' ...
+            'tau_e %.2f ms   tau_m %.1f ms\ngain %.2f rpm/V   free speed %.0f rpm\nstall torque %.2f N·m (output)\n%s'], ...
+            D.R, D.Kt, D.b, D.J, 1e3 * D.tau_e, 1e3 * D.tau_m, D.gain_rpm_per_V, D.w_free_out, D.T_stall_out, D.tf);
+    end
+
+    function onResetPhysics()
+        busy = true;
+        ui.pVnom.Value = spec0.V_nom; ui.pWnl.Value = spec0.w_nl_out; ui.pN.Value = spec0.N;
+        ui.pInl.Value = spec0.I_nl; ui.pIst.Value = spec0.I_stall; ui.pJ.Value = 1e6 * spec0.J_rotor;
+        ui.pL.Value = 1e3 * spec0.L; ui.pIdrv.Value = spec0.I_drive; ui.pVs.Value = spec0.V_supply; ui.pCap.Value = 0;
+        ui.Jf.Value = 1;
+        busy = false;
+        paramChanged(true);
+        say('Datasheet values restored (RMCS-5032, RMCS-2303, 11.2 V battery).', 'info');
+    end
+
+    function onSimulink()
+        if isempty(ver('simulink')) || ~license('test', 'Simulink')
+            say('Simulink is not installed on this computer: the app''s own simulation is the same model.', 'warn'); return;
+        end
+        c = readCfg(); c.Tend = Tend;
+        here = fullfile(enr312.repoRoot(), 'matlab', 'models', 'dc_motor');
+        try
+            switch c.plantKey
+                case 'arm'
+                    mdl = 'enr312_dc_motor';
+                    c.setpoint = profile(end, 2); c.tStep = profile(min(2, end), 1) * (size(profile, 1) > 1);
+                    if ~isfile(fullfile(here, [mdl '.slx'])), build_dc_motor_simulink(here); end
+                    w = dc_motor_simulink_params(c);
+                case 'rigId'
+                    mdl = 'enr312_motor_identified';
+                    if ~isfile(fullfile(here, [mdl '.slx'])), build_motor_identified_simulink(here); end
+                    w = motor_identified_simulink_params(model, c, profile, Tend);
+                otherwise
+                    say('The drive-physics plant exists in MATLAB only; Simulink models: identified rig and armature.', 'warn'); return;
+            end
+            load_system(fullfile(here, [mdl '.slx']));
+            mw = get_param(mdl, 'ModelWorkspace');
+            for f = fieldnames(w)', assignin(mw, f{1}, w.(f{1})); end
+            open_system(mdl);
+            say(sprintf('%s opened with these settings: press Run in Simulink.', mdl), 'ok');
+        catch err
+            say(['Simulink: ' err.message], 'warn');
+        end
     end
 
     function y = yOf(S)
@@ -400,6 +562,13 @@ function app = enr312_motor()
         if isempty(Mref), set(tr.yRef, 'XData', nan, 'YData', nan);
         else, set(tr.yRef, 'XData', Mref.t, 'YData', Mref.w); end
         set(tr.uLim(1), 'Value', c.uMax); set(tr.uLim(2), 'Value', -c.uMax);
+        if isfield(S, 'i')
+            set(tr.iS, 'XData', S.t, 'YData', S.i);
+            iL = ternary(strcmp(c.plantKey, 'arm'), c.PD.spec.I_stall, c.P.I_lim_drive);
+            set(tr.iLim(1), 'Value', iL); set(tr.iLim(2), 'Value', -iL);
+        else
+            set(tr.iS, 'XData', nan, 'YData', nan);
+        end
         if strcmp(MIS(mis).kind, 'map')
             ms = metricsOf(S.tk, S.r, S.meas, S.u, c);
             set(tr.mapS, 'XData', ms.map.cmd, 'YData', ms.map.speed);
@@ -412,7 +581,9 @@ function app = enr312_motor()
         xl = [0 Tend];
         if ~isempty(replay), xl(2) = max(xl(2), replay.T.t_s(end)); end
         if hw.on && link.n > 0, xl(2) = max(xl(2), hwT()); end
-        xlim(axY, xl); xlim(axU, xl);
+        xlim(axY, xl); xlim(axU, xl); xlim(axI, xl);
+        is = get(tr.iS, 'YData'); is = is(isfinite(is));
+        if ~isempty(is), ylim(axI, [min([is 0]) - 0.2, max([is 0]) + 0.2]); end
         ys = [get(tr.yS, 'YData'), get(tr.yR, 'YData'), get(tr.yH, 'YData'), get(tr.ref, 'YData'), 0];
         ys = ys(isfinite(ys));
         lo = min(ys); hi = max(ys); pad = max(5, 0.12 * (hi - lo));
@@ -425,7 +596,7 @@ function app = enr312_motor()
     % =================================================================== numbers
     function m = metricsOf(tk, r, y, u, c)
         if strcmp(c.loop, 'speed')
-            if strcmp(c.spdFb, 'encoder'), res = 60 / (5200 * c.Ts); else, res = P0.spd_fb_step_base_rpm / P0.N; end
+            if strcmp(c.spdFb, 'encoder'), res = 60 / (c.P.cpr_out * c.Ts); else, res = P0.spd_fb_step_base_rpm / P0.N; end
         else
             res = 2 * P0.deg_per_count;
         end
@@ -458,6 +629,23 @@ function app = enr312_motor()
             else
                 D(end + 1, :) = {name, num(scale * ms.(key), f), num(scale * getm(mr, key), f), ...
                                  num(scale * getm(mt, key), f)}; %#ok<AGROW>
+            end
+        end
+        if isfield(S, 'i') && c.dist ~= 0 && c.tDist < Tend      % load torque: dip and recovery
+            j = S.t >= c.tDist & isfinite(S.y); tt = S.t(j) - c.tDist; yy = S.y(j);
+            ref = profile(find(profile(:, 1) <= c.tDist, 1, 'last'), 2);
+            dev = yy - ref; [~, jm] = max(abs(dev));
+            band = max(0.02 * abs(ref), 0.5); out = abs(dev) > band;
+            rec = NaN; if ~out(end), jl = find(out, 1, 'last'); if isempty(jl), rec = 0; else, rec = tt(jl + 1); end, end
+            D(end + 1, :) = {sprintf('worst deviation after the load (%s)', un), num(dev(jm), '%.2f'), '—', ''};
+            D(end + 1, :) = {'back within 2 % after the load (s)', num(rec, '%.2f'), '—', ''};
+        end
+        if isfield(S, 'i')                               % physics plants: current and battery
+            if strcmp(c.plantKey, 'arm'), D(strcmp(D(:, 1), 'peak command (rpm)'), 1) = {'peak command (V)'}; end
+            D(end + 1, :) = {'peak armature current (A)', num(max(abs(S.i)), '%.2f'), '—', ''};
+            cap = c.PD.spec.capacity_mAh;
+            if isfinite(cap) && S.iBatt > 0
+                D(end + 1, :) = {'battery runtime at this load (h)', num(cap / 1000 / S.iBatt, '%.1f'), '—', ''};
             end
         end
         ui.table.Data = D;
@@ -613,7 +801,7 @@ function app = enr312_motor()
         if ~isempty(I) && strcmp(ui.runFilter.Value, 'this mission')
             M = MIS(mis);
             if strcmp(M.kind, 'lab'), keep = true(height(I), 1);
-            else, keep = ismember(I.name, M.experiments); end
+            else, keep = strcmp(I.mission, M.tag) | ismember(I.name, M.experiments); end
             I = I(keep, :);
         end
         runsView = I;
@@ -647,6 +835,7 @@ function app = enr312_motor()
         c = R.cfg;
         % the simulation takes the run's own settings, so SIM and RIG compare like with like
         busy = true;
+        ui.plant.Value = 'rigId'; ui.Kd.Value = 0; ui.dist.Value = 0; ui.Jf.Value = 1;
         setToggle(ui.loopGrp, strcmp(c.loop, 'speed'), ui.loopSpeed, ui.loopPos);
         setToggle(ui.fbGrp, ~strcmp(getf(c, 'spdFb', 'drive'), 'encoder'), ui.fbDrive, ui.fbEnc);
         ui.ctrl.Value = c.ctrl; ui.Kp.Value = c.Kp; ui.Ki.Value = c.Ki;
@@ -820,6 +1009,9 @@ function app = enr312_motor()
     function onRunRig()
         if hw.on, say('Already running.', 'warn'); return; end
         if ~link.isOpen(), say('Not connected: plug in the Uno and press CONNECT.', 'warn'); return; end
+        if strcmp(ui.plant.Value, 'arm')
+            say('The armature model is simulation only: on the rig the RMCS-2303 drives the motor. Choose a RIG plant.', 'warn'); return;
+        end
         stopPlay();
         if ~isempty(hw.fault)
             say(sprintf('The firmware stopped the last run (%s). Press CLEAR FAULT first.', hw.fault), 'warn'); return;
@@ -865,11 +1057,28 @@ function app = enr312_motor()
         end
     end
 
+    function onSync()
+        if hw.on, say('STOP the run before syncing.', 'warn'); return; end
+        d = uiprogressdlg(fig, 'Title', 'SYNC DATA', 'Indeterminate', 'on', 'Message', 'Committing and pushing the rig data ...');
+        r = enr312.data.sync('MOTOR'); close(d);
+        say(r.message, ternary(r.ok, 'ok', 'warn'));
+    end
+
     function onRunDone(spec, T, k) %#ok<INUSL>
+        saveRunNow(T, k, 'FINISHED');
+    end
+
+    function saveRunNow(T, k, result)
+        % every rig run is kept, finished or not: the result says which
+        if nargin < 1 || isempty(T), T = hwTable(); end
+        if nargin < 2 || isempty(k), k = getf(hw, 'runK', 1); end
+        if isempty(T) || height(T) == 0 || ~isfield(hw, 'cfg') || isempty(hw.cfg), return; end
         T = T(T.seq >= 0, :);
         if isempty(T) || height(T) == 0, return; end
+        name = ''; if ~isempty(hw.runner), name = hw.runner.experiment.name; end
         info = struct('port', char(link.port), 'invalidCount', link.invalidCount, 'seqGaps', link.seqGaps, ...
-            'experiment', hw.runner.experiment.name, 'run', k, 'app', 'enr312_motor');
+            'experiment', name, 'run', k, 'app', 'enr312_motor', 'mission', MIS(mis).tag, ...
+            'hello', {link.hello}, 'result', result);
         try
             r = enr312.motor.exportHardwareRun(T, hw.cfg, link.eventLog, info);
             hw.lastSaved = r.runId;
@@ -944,6 +1153,7 @@ function app = enr312_motor()
     function fault(txt)
         p = strsplit(char(txt), ','); reason = strtrim(p{end});
         hw.fault = reason;
+        if hw.on, saveRunNow([], [], ['STOPPED: ' reason]); end
         endRun('');
         ui.stateChip.Text = 'FAULT'; ui.stateChip.BackgroundColor = K.red;
         ui.clear.BackgroundColor = K.amber; ui.clear.FontColor = K.bg;
@@ -982,7 +1192,7 @@ function app = enr312_motor()
         catch err
             say(['STOP failed: ' err.message ' -- switch the battery off.'], 'warn');
         end
-        if hw.on, endRun('stopped by the operator'); end
+        if hw.on, saveRunNow([], [], 'ABORTED: by the operator'); endRun('stopped by the operator'); end
     end
 
     function doAbort()
@@ -1185,7 +1395,11 @@ function s = runTag(r, n, k)
     else, s = sprintf('%s%s', ternary(isempty(g), '', ['  · ' g]), fb); end
 end
 
-function s = shortId(id), s = regexprep(id, '^MOTOR-(\d+)-HW-(\d{4})(\d{4})-(\d{4})(\d{2})$', 'M$1 $3 $4'); end
+function s = shortId(id)
+    % MOTOR-R0061_20261023-193103_M6 -> 'R0061  10-23 19:31  M6'
+    t = regexp(id, '^[A-Z]+-R(\d+)_\d{4}(\d{2})(\d{2})-(\d{2})(\d{2})\d{2}_(.*)$', 'tokens', 'once');
+    if isempty(t), s = id; else, s = sprintf('R%s  %s-%s %s:%s  %s', t{:}); end
+end
 function s = ctrlTxt(c), if strcmp(c, 'OL'), s = 'open'; else, s = c; end, end
 function v = getm(m, k), if isempty(m) || ~isfield(m, k), v = NaN; else, v = m.(k); end, end
 function v = getf(s, f, d), if isfield(s, f) && ~isempty(s.(f)), v = s.(f); else, v = d; end, end

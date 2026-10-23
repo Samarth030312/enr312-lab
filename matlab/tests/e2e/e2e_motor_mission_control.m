@@ -27,7 +27,7 @@ function ok = e2e_motor_mission_control(simBinary)
     ok = true;
 
     % ---- connect and drive check
-    app.selectMission(10);                               % LAB
+    app.selectMission(find(strcmp({enr312.motor.missions().tag}, 'LAB')));
     app.setPreset(3);                                    % speed, open loop, 40 rpm
     ok = check(app.connect(pty), 'connect: firmware said HELLO') & ok;
     ok = check(contains(app.ui.fw.Text, 'drive id 7'), ['top bar shows the drive: ' app.ui.fw.Text]) & ok;
@@ -50,7 +50,11 @@ function ok = e2e_motor_mission_control(simBinary)
     t1 = tic; while app.state().on && toc(t1) < 8, pause(0.2); end   % run length 8 s, then saves itself
     ok = check(~app.state().on, sprintf('run ended by itself at its run length (+%.1f s)', toc(t1))) & ok;
     raw = dir(fullfile(tmp, 'data', 'raw', 'dc_motor', '*.csv'));
-    ok = check(numel(raw) == 1, sprintf('the run was saved as raw data (%d file)', numel(raw))) & ok;
+    ok = check(numel(raw) == 1 && startsWith(raw(1).name, 'MOTOR-R0001_') && endsWith(raw(1).name, '_LAB.csv'), ...
+        sprintf('the run was saved as raw data with a register id (%s)', strjoin({raw.name}, ' '))) & ok;
+    Rg = readtable(fullfile(tmp, 'data', 'RUN_REGISTER.csv'), 'TextType', 'char');
+    ok = check(height(Rg) == 1 && strcmp(Rg.result{1}, 'FINISHED') && contains(Rg.rig{1}, 'drive id 7'), ...
+        'the run is in RUN_REGISTER.csv with its rig and result') & ok;
 
     % ---- latched fault: the firmware refuses RUN, the app says why, CLEAR FAULT recovers
     app.link().estop(); pause(0.3);
@@ -66,8 +70,8 @@ function ok = e2e_motor_mission_control(simBinary)
     items = app.ui.preset.Items; k = find(contains(items, 'Direction and reversal'), 1);
     app.setPreset(k);
     app.runRig(); t1 = tic; pause(1); while app.state().on && toc(t1) < 20, pause(0.2); end
-    raw = dir(fullfile(tmp, 'data', 'raw', 'dc_motor', 'MOTOR-02-HW-*.csv'));
-    ok = check(numel(raw) == 1, sprintf('M1 experiment saved (%d MOTOR-02 file)', numel(raw))) & ok;
+    raw = dir(fullfile(tmp, 'data', 'raw', 'dc_motor', 'MOTOR-R*_M1.csv'));
+    ok = check(numel(raw) == 1, sprintf('M1 experiment saved (%d file, %s)', numel(raw), strjoin({raw.name}, ' '))) & ok;
     if ~isempty(raw)
         T = readtable(fullfile(raw(1).folder, raw(1).name));
         ok = check(any(T.meas > 25) && any(T.meas < -25), 'ran both directions (+30 / -30 rpm)') & ok;
@@ -82,6 +86,8 @@ function ok = e2e_motor_mission_control(simBinary)
     app.abort(); pause(0.5);
     ok = check(~app.state().on && numel(strfind(fileread(log), '> $STOP,1')) > nStop, ...
         'ABORT sends STOP and ends the run') & ok;
+    Rg = readtable(fullfile(tmp, 'data', 'RUN_REGISTER.csv'), 'TextType', 'char');
+    ok = check(startsWith(Rg.result{end}, 'ABORTED'), ['the aborted run is kept and marked: ' Rg.result{end}]) & ok;
 
     fprintf('\nE2E %s (data and logs in %s)\n', ternary(ok, 'PASSED', 'FAILED'), tmp);
 end
