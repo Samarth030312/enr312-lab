@@ -1,7 +1,8 @@
 function R = loadHardwareRun(runId)
 %LOADHARDWARERUN  Read one exported DC-motor hardware run (raw CSV + metadata JSON).
 %
-%   R = enr312.motor.loadHardwareRun('MOTOR-02-HW-20261011-133631')
+%   R = enr312.motor.loadHardwareRun('MOTOR-R0006_20261011-133631_M1')
+%   R = enr312.motor.loadHardwareRun('MOTOR-02-HW-20261011-133631')      % legacy id, same run
 %
 %   R.T     table (seq, t_ms, loop, ctrl, setpoint, meas, err, u, pos_counts, spd_base_rpm, flags, t_s)
 %   R.meta  decoded metadata (config_sent, link, ...)
@@ -9,8 +10,8 @@ function R = loadHardwareRun(runId)
 %   R.id    run id
 %   Raw files are only read.
 
-    root = enr312.repoRoot();
-    if ~isempty(getenv('ENR312_DATA_ROOT')), root = getenv('ENR312_DATA_ROOT'); end
+    root = enr312.data.root();
+    runId = enr312.data.resolve(runId);                  % old ids (MOTOR-02-HW-...) still work
     f = fullfile(root, 'data', 'raw', 'dc_motor', [runId '.csv']);
     assert(isfile(f), 'enr312:motor:run', 'no raw data %s', f);
     R.id = runId;

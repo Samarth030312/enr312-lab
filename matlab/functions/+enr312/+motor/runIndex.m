@@ -3,17 +3,17 @@ function I = runIndex()
 %
 %   I = enr312.motor.runIndex()       % table
 %
-%   Columns: id, created (datetime), experiment (MOTOR-nn), name (the hardware experiment,
+%   Columns: id, runNo, created (datetime), mission (M1..), rig, experiment, name (the hardware experiment,
 %   without the "[run k/n]" suffix), run (k), loop, fb ('drive' | 'encoder' | ''), ctrl,
 %   Kp, Ki, uMax, rows, result ('FINISHED' or the firmware's first error), port.
 %   Only metadata is read (fast); the raw CSV is loaded on demand with loadHardwareRun.
-    root = enr312.repoRoot();
-    if ~isempty(getenv('ENR312_DATA_ROOT')), root = getenv('ENR312_DATA_ROOT'); end
-    d = dir(fullfile(root, 'data', 'metadata', 'dc_motor', 'MOTOR-*-HW-*.json'));
+    root = enr312.data.root();
+    d = dir(fullfile(root, 'data', 'metadata', 'dc_motor', 'MOTOR-*.json'));
     n = numel(d);
     id = cell(n, 1); created = NaT(n, 1); experiment = cell(n, 1); name = cell(n, 1); run = nan(n, 1);
     loop = cell(n, 1); fb = cell(n, 1); ctrl = cell(n, 1); Kp = nan(n, 1); Ki = nan(n, 1); uMax = nan(n, 1);
     rows = nan(n, 1); result = cell(n, 1); port = cell(n, 1); keep = true(n, 1);
+    mission = repmat({''}, n, 1); runNo = nan(n, 1); rig = repmat({''}, n, 1);
     for k = 1:n
         try
             J = jsondecode(fileread(fullfile(d(k).folder, d(k).name)));
@@ -24,17 +24,22 @@ function I = runIndex()
             pr = getf(c, 'preset', '');
             tok = regexp(pr, '^(.*) \[run (\d+)/\d+\]$', 'tokens', 'once');
             if isempty(tok), name{k} = pr; else, name{k} = tok{1}; run(k) = str2double(tok{2}); end
+            if isempty(name{k}), name{k} = getf(J, 'experiment', ''); end
             loop{k} = getf(c, 'loop', ''); ctrl{k} = getf(c, 'ctrl', '');
             fb{k} = ''; if strcmp(loop{k}, 'speed'), fb{k} = getf(c, 'spdFb', 'drive'); end
             Kp(k) = getf(c, 'Kp', NaN); Ki(k) = getf(c, 'Ki', NaN); uMax(k) = getf(c, 'uMax', NaN);
             rows(k) = getf(J, 'rows', NaN);
-            result{k} = runResult(J, getf(c, 'Ts', 0.1));
+            result{k} = getf(J, 'result', '');
+            if isempty(result{k}), result{k} = runResult(J, getf(c, 'Ts', 0.1)); end
+            if isfield(J, 'experiment') && ~isempty(J.experiment), name{k} = J.experiment; end
+            if isfield(J, 'run_in_series'), run(k) = J.run_in_series; end
+            mission{k} = getf(J, 'mission', ''); runNo(k) = getf(J, 'run_no', NaN); rig{k} = getf(J, 'rig', '');
             port{k} = ''; if isfield(J, 'link') && isfield(J.link, 'port'), port{k} = J.link.port; end
         catch
             keep(k) = false;                                  % unreadable metadata: not listed
         end
     end
-    I = table(id, created, experiment, name, run, loop, fb, ctrl, Kp, Ki, uMax, rows, result, port);
+    I = table(id, runNo, created, mission, rig, experiment, name, run, loop, fb, ctrl, Kp, Ki, uMax, rows, result, port);
     I = I(keep, :);
     I = sortrows(I, 'created', 'descend');
 end
