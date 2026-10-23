@@ -2,7 +2,8 @@ function setup_enr312()
 %SETUP_ENR312  Put the ENR312 MATLAB code (and only it) on the path for this session.
 %
 %   run('<repo>/matlab/setup_enr312.m')
-%   then: MotorControlApp, TemperatureControlApp, WaterLevelApp
+%   then: enr312_motor (DC-motor mission control), TemperatureControlApp, WaterLevelApp
+%   (or simply: enr312_start, which also checks the computer)
 %   (pneumatics are done in Festo FluidSIM, not MATLAB: see pneumatic/README.md)
 %
 %   Only folders inside this repository are added. Nothing from other projects

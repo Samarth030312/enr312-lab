@@ -359,7 +359,7 @@ function out = motor_course_questions()
          'stop integrating (`if (sat && sign(uRaw) == sign(e)) iNew = iOld;`). Hardware run: "Course S3-12".'], ...
          N.windup.none.recovery_s, N.windup.clamping.recovery_s);
     say('');
-    say('## Pending hardware runs (MotorControlApp -> Hardware experiments)');
+    say('## Pending hardware runs (enr312_motor -> mission -> RUN ON RIG)');
     say('Course S3-3 static map; S3-2/S3-4 open-loop step (drive vs encoder); S3-5 10-deg position P; S3-9 I-only Ki sweep; S3-10 designed PI; S3-12 saturation. Then DIAG after any run for S3-6 loop time.');
 
     % ------------------------------------------------------------------ write

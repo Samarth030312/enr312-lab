@@ -132,7 +132,7 @@ static double lastTelField(int idx) {                  // field idx (0-based aft
 }
 
 // --pty: run the firmware in real time on a pseudo-terminal so MATLAB can connect to it
-// (end-to-end test of MotorControlApp <-> real firmware code <-> emulated drive).
+// (end-to-end test of enr312_motor <-> real firmware code <-> emulated drive).
 static int runPty() {
   g_realtime = true;
   int m = posix_openpt(O_RDWR | O_NOCTTY);

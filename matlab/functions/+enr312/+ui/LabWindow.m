@@ -1,5 +1,5 @@
 classdef LabWindow < handle
-%LABWINDOW  Shared layout for the ENR312 lab apps (same look as MotorControlApp).
+%LABWINDOW  Shared layout for the ENR312 lab apps (temperature and water level).
 %
 %   w = enr312.ui.LabWindow(title, plotLayout)
 %

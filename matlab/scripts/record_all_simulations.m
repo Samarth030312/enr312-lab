@@ -12,8 +12,10 @@ function T = record_all_simulations(subsystem, onlyMissing)
 %   (Pneumatics: FluidSIM screen recordings, see pneumatic/README.md.)
 
     if nargin < 2, onlyMissing = true; end
+    if strcmp(subsystem, 'dc_motor')                 % mission control: one video per mission
+        motor_formal_runs(true, true); T = table(); return;
+    end
     switch subsystem
-        case 'dc_motor',    app = MotorControlApp();       names = {enr312.motor.presets().name};
         case 'temperature', app = TemperatureControlApp(); names = {enr312.temperature.presets().name};
         case 'water_level', app = WaterLevelApp();         names = {enr312.level.presets().name};
         otherwise, error('enr312:record:subsystem', 'unknown subsystem %s', subsystem);

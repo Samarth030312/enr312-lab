@@ -2,8 +2,8 @@ function T = motor_formal_runs(recordVideos, figuresOnly)
 %MOTOR_FORMAL_RUNS  Run, export and summarise every DC-motor simulation preset.
 %
 %   T = motor_formal_runs()          % evidence + figures + metrics table
-%   T = motor_formal_runs(true)      % also record videos of the key presets
-%                                    % through MotorControlApp (needs a display)
+%   T = motor_formal_runs(true)      % also record one video per mission
+%                                    % with enr312_motor (needs a display)
 %   motor_formal_runs(false, true)   % regenerate the comparison figures only
 %
 %   Writes
@@ -106,15 +106,15 @@ function sweepSpeedP(figDir)
 end
 
 function recordKeyRuns()
-    names = {'Rig - speed - P, Kp 0.5', 'Rig - speed - PI, Kp 0.3 Ki 1.5', ...
-             'Rig - position - P, Kp 0.3', 'Rig - position - I only, Ki 0.1', ...
-             'Bare motor - speed - PI + load'};
-    app = MotorControlApp();
+    % one video per mission (first preset), from the mission-control app
+    app = enr312_motor();
     cleanup = onCleanup(@() delete(app.fig));
-    app.ui.record.Value = true;
-    for k = 1:numel(names)
-        app.preset(names{k}); drawnow; pause(0.5);
-        app.run();
-        fprintf('recorded %-40s -> %s\n', names{k}, app.lastVideo());
+    M = enr312.motor.missions();
+    for k = 1:numel(M) - 1
+        app.selectMission(k); app.setPreset(1); drawnow; pause(0.5);
+        outDir = fullfile(enr312.repoRoot(), 'results', 'evidence', 'simulation_runs', 'dc_motor', ...
+            sprintf('MISSION-%s-SIM-%s', M(k).tag, char(datetime('now', 'Format', 'yyyyMMdd-HHmmss'))));
+        v = app.record(outDir, 'sim');
+        fprintf('recorded %-4s %-14s -> %s\n', M(k).tag, M(k).short, v);
     end
 end
