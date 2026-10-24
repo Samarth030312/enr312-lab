@@ -183,6 +183,13 @@ int main(int argc, char **argv) {
   CHECK(fabs(meas - 50) < 1.0, "speed PI reaches 50 rpm (emulated drive)");
   CHECK(emu.reg[2] == 0x0101, "drive in digital speed mode, CW");
 
+  {
+    // OI-M12: the lab drive ran away in reverse when a speed run started from rest after
+    // STOP without a HOME; every RUN, any loop, must write HOME before the speed mode word
+    auto h = std::find(emu.modeHistory.begin(), emu.modeHistory.end(), 0x0800);
+    auto s = std::find(emu.modeHistory.begin(), emu.modeHistory.end(), 0x0101);
+    CHECK(h != emu.modeHistory.end() && h < s, "speed run starts with SET HOME, before the speed mode word");
+  }
   send("SET,1,-30"); runFor(4000, true);
   CHECK(emu.reg[2] == 0x0109, "negative command switches drive to CCW");
   CHECK(fabs(lastTelField(5) + 30) < 1.0, "speed PI reaches -30 rpm");

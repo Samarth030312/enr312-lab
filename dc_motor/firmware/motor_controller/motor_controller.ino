@@ -273,7 +273,11 @@ static void handleLine(char *line) {
     uint16_t lpr = 0;
     if (!mbRead(slaveId, REG_LPR, 1, &lpr)) { err(t, 9, "drive did not answer (modbus)"); return; }
     if (lpr != LPR_RMCS5032 && !mbWrite(REG_LPR, LPR_RMCS5032)) { err(t, 12, "could not set LPR 13"); return; }
-    bool ok = (cfg.loop != 'P') || mbWrite(REG_MODE, MODE_HOME);   // angle measured from here
+    // HOME before every run, not only for position (the angle is measured from here). A speed
+    // run started after the motor had come to rest under a 0 command and then STOP, without a
+    // HOME in between, ran full speed in reverse at enable 12 times out of 12 on the lab drive
+    // (2026-10-11, -23, -24); with a HOME first, 0 times. Cause inside the drive UNVERIFIED.
+    bool ok = mbWrite(REG_MODE, MODE_HOME);
     ok = ok && commandSpeed(0);
     if (ok && cfg.loop == 'E') {                       // reference count for the first difference
       ok = readPosition(lastCounts); haveCounts = ok; tLastCounts = millis();
