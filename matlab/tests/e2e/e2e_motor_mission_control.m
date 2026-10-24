@@ -52,7 +52,7 @@ function ok = e2e_motor_mission_control(simBinary)
     raw = dir(fullfile(tmp, 'data', 'raw', 'dc_motor', '*.csv'));
     ok = check(numel(raw) == 1 && startsWith(raw(1).name, 'MOTOR-R0001_') && endsWith(raw(1).name, '_LAB.csv'), ...
         sprintf('the run was saved as raw data with a register id (%s)', strjoin({raw.name}, ' '))) & ok;
-    Rg = readtable(fullfile(tmp, 'data', 'RUN_REGISTER.csv'), 'TextType', 'char');
+    Rg = enr312.data.register();                         % the app's own reader (quoted fields)
     ok = check(height(Rg) == 1 && strcmp(Rg.result{1}, 'FINISHED') && contains(Rg.rig{1}, 'drive id 7'), ...
         'the run is in RUN_REGISTER.csv with its rig and result') & ok;
 
@@ -86,7 +86,7 @@ function ok = e2e_motor_mission_control(simBinary)
     app.abort(); pause(0.5);
     ok = check(~app.state().on && numel(strfind(fileread(log), '> $STOP,1')) > nStop, ...
         'ABORT sends STOP and ends the run') & ok;
-    Rg = readtable(fullfile(tmp, 'data', 'RUN_REGISTER.csv'), 'TextType', 'char');
+    Rg = enr312.data.register();                         % the app's own reader (quoted fields)
     ok = check(startsWith(Rg.result{end}, 'ABORTED'), ['the aborted run is kept and marked: ' Rg.result{end}]) & ok;
 
     fprintf('\nE2E %s (data and logs in %s)\n', ternary(ok, 'PASSED', 'FAILED'), tmp);

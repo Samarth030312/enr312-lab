@@ -1102,6 +1102,7 @@ function app = enr312_motor()
             end
             poseAt('live', T.t_s(end));
             autoAxes();
+            drawnow limitrate; link.poll();             % render now, then PING again: a slow frame never starves the 1 s watchdog
         end
         ev = link.eventLog; idx = [];
         if ~isempty(ev), idx = find(strcmp(ev(:, 2), 'ERR') & startsWith(string(ev(:, 3)), ["RUN,", "HOME,"])); end
