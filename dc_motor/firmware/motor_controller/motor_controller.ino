@@ -277,7 +277,11 @@ static void handleLine(char *line) {
     // run started after the motor had come to rest under a 0 command and then STOP, without a
     // HOME in between, ran full speed in reverse at enable 12 times out of 12 on the lab drive
     // (2026-10-11, -23, -24); with a HOME first, 0 times. Cause inside the drive UNVERIFIED.
+    // The HOME resets the drive's position count, and its speed estimate sees that as a jump:
+    // enabling at once read -6000 base rpm for one sample and jerked the shaft ~50 counts
+    // (2026-10-24). Let the estimate settle before the speed mode word enables the motor.
     bool ok = mbWrite(REG_MODE, MODE_HOME);
+    if (ok) delay(150);
     ok = ok && commandSpeed(0);
     if (ok && cfg.loop == 'E') {                       // reference count for the first difference
       ok = readPosition(lastCounts); haveCounts = ok; tLastCounts = millis();
