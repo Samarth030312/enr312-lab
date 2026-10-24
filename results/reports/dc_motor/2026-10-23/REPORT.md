@@ -35,16 +35,16 @@ Commands 1 to 150 rpm held 3 s each, both directions, speed from encoder counts 
 ## S3-2 / S3-4 Open-loop step 0 -> 60 rpm
 Drive-register feedback (run 1): rise 10-90 % **0.90 s** (model 0.80 s), mean slope 53.3 rpm/s (model ramp 53.4), gain 1.000, RMSE rig vs model 4.12 rpm (the register moves in 4.6 rpm steps). The step response is the drive's acceleration ramp, not a first-order lag.
 
-**Encoder-feedback run (run 2): not obtained.** It was started 3 time(s) in this session and each time the firmware cut motor power at t = 0.2 s (see "Safety events"). S3-2's encoder-vs-register comparison therefore rests on the static map above (encoder) and this run (register).
+**Encoder-feedback run (run 2): not obtained.** It was started 3 time(s) in this session and each time the firmware cut motor power (see "Safety events").
 
 ![open loop](S3-4_open_loop.png)
 
 ## S3-5 Position P: final error of 10 deg moves
 | Kp | final error, rig (deg) | model (deg) | overshoot rig (%) | settling rig (s) |
 |---:|---:|---:|---:|---:|
-| 0.1 | -0.114 | 0.087 | 2.5 | 7.65 |
+| 0.1 | -0.114 | 0.094 | 2.5 | 7.65 |
 | 0.3 | -0.168 | 0.005 | 1.8 | 4.35 |
-| 1.0 | -0.107 | 0.256 | 62.0 | not settled |
+| 1.0 | -0.107 | 0.039 | 62.0 | not settled |
 
 One encoder count is 0.069 deg. P alone reaches a 10 deg target to within a few counts at every gain: the drive's own loop removes the motor's dead zone, so even a 0.1 rpm command turns the shaft (S3-11).
 
@@ -84,9 +84,5 @@ The firmware cut motor power 4 time(s) in the recorded runs:
 | MOTOR-R0040_20261023-190640_M1 | S3-2/S3-4 run 2 | 0.2 | 0.0 | -166.5 | runaway: too fast - check encoder and LPR |
 | MOTOR-R0035_20261023-190403_M1 | S3-2/S3-4 run 2 | 0.2 | 0.0 | -165.9 | runaway: too fast - check encoder and LPR |
 
-**Observation (cause UNVERIFIED).** The three stops at t = 0.2 s all came at the start of the encoder-feedback run that follows a drive-register open-loop run ending at 0 rpm. The motor really turned backwards at full speed (the encoder count fell by ~1445 counts per 100 ms, about -167 rpm) while 0 rpm was commanded. Two other facts from the session log: the STOP before each of these runs took 1.5 s to be acknowledged instead of the usual 0.35 s (the drive did not answer the first stop write at once), and a similar full-speed reverse start happened at 18:56 with drive feedback (log `hw_session_20261023-185416.log`). The runaway guard caught every case within 0.2 s.
-
-**Proposed firmware change (not made; needs a rig test).** At RUN the firmware writes the speed-mode word first and the speed register second (`commandSpeed(0)`), so for one Modbus transaction the drive runs on whatever the speed register holds. Writing 0 to the speed register before the mode word removes that window. Test: repeat "Course S3-2/S3-4" five times; run 2 must start at 0 rpm every time.
-
-The stop at t = 38.1 s of the reverse static map is a **false trip**: the command had just dropped from -150 to 0 and the drive was still ramping down (53 rpm/s), so for two samples the speed was "too fast" and not yet falling. Only the last 3 s of that run were lost.
+A stop in the first 0.3 s of a run is the reverse runaway at enable (OI-M12): the motor at full voltage backwards while 0 or a small speed was asked. Its pattern over every session, and the firmware fix (HOME at every RUN, firmware e60d046 and later), are in `results/reports/dc_motor/2026-10-24/ANALYSIS.md` section 1 (`motor_rig_analysis`). A later stop while the command is falling can be a false trip of the guard during the drive's ramp-down.
 

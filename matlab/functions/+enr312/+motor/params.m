@@ -55,8 +55,10 @@ function P = params()
     add('baud_drive',   9600,  'bit/s',   'VERIFIED_FROM_MANUAL', 'SRC-002', 'all vendor examples; framing UNVERIFIED (OI-M3)');
     add('Ts_speed',     0.10,  's',       'ESTIMATED', '', 'write SPD + read speed ~ 66 chars at 9600 baud (ED-M1)');
     add('Ts_position',  0.15,  's',       'ESTIMATED', '', 'adds two position reads ~ 135 ms (ED-M1)');
-    add('lat_speed',    0.07,  's',       'ESTIMATED', '', 'read then write: command lands ~ 69 ms after the sample');
-    add('lat_position', 0.135, 's',       'ESTIMATED', '', '');
+    add('lat_speed',    0.07,  's',       'MEASURED',  'hw_session_20261025-000324', 'firmware loop time, sample to command: 70.5 ms (drive register), 74.8 ms (encoder)');
+    add('lat_position', 0.11,  's',       'MEASURED',  'hw_session_20261025-000324', ['fitted: the oscillation of position P at Kp 1.0 (MOTOR-R0043, MOTOR-R0044, MOTOR-R0051, MOTOR-R0052, MOTOR-R0082) ' ...
+        'is matched between 0.10 and 0.12 s; the firmware''s own sample-to-command time is 78 ms (110 ms with a direction ' ...
+        'write), the rest is inside the drive (UNVERIFIED). Was 0.135 s, a paper estimate']);
 
     % ------------------------------------------------------------ derived
     P.rpm = rpm;
