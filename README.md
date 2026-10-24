@@ -29,13 +29,15 @@ Each app runs without hardware. Plug in the Uno and it offers to flash the firmw
 
 ## What the rigs showed
 
-DC motor, 61 recorded runs ([report 2026-10-23](results/reports/dc_motor/2026-10-23/REPORT.md)):
+DC motor, 112 recorded runs, 2026-10-11 to 10-24 ([analysis](results/reports/dc_motor/2026-10-24/ANALYSIS.md),
+[report 2026-10-24](results/reports/dc_motor/2026-10-24/REPORT.md)):
 
 - The drive makes the motor a near-perfect speed source: slope 0.997, no dead zone down to 2 rpm.
-- A step is the drive's 53 rpm/s ramp, not a lag. A model with that ramp and the 70 ms Modbus
-  latency predicts closed-loop runs it never saw within a few rpm.
-- The textbook ζ 0.7 PI design overshoots 29 % and limit-cycles ±6.7 rpm; clamping anti-windup
-  recovers in 0.5 s; P alone positions to two encoder counts.
+- A step is the drive's 53 rpm/s ramp, not a lag. A model with that ramp and the measured Modbus
+  latency predicts runs it never saw: median error 5.5 % of the setpoint, 83 runs.
+- The textbook ζ 0.7 PI design overshoots 32 % (3 repeats, ±0.5) and limit-cycles; clamping
+  anti-windup recovers in 0.5 s; P alone positions to two encoder counts.
+- A full-speed reverse start at RUN (12 of 12 risky starts) is gone with a HOME at every RUN (0 of 21).
 
 Temperature and water level: firmware and apps tested end to end against emulated hardware;
 first rig sessions to come. Their physics panels take your bulb, box, tank and pump values.

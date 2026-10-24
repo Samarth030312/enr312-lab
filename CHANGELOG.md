@@ -1,5 +1,23 @@
 # Changelog
 
+## 2026-10-25: the DC motor on the rig again, analysed in depth; the reverse runaway fixed
+
+* **Rig campaign** (`motor_rig_campaign`): every course experiment of M1-M9 run from the app on
+  the rig, 27 runs (MOTOR-R0062 to R0088), then 24 verification runs (R0089 to R0112).
+* **OI-M12 fixed.** A speed run started from rest after STOP, without a HOME, ran backwards at full
+  voltage 12 of 12 times over three sessions (the logs, not the saved runs, are the complete
+  record). The firmware now writes HOME at every RUN and lets the drive settle 150 ms before
+  enabling it (e60d046, f87b283): 0 of 21 such starts ran away on the rig. The slow STOP
+  acknowledgements once blamed on the drive were the app saving the run.
+* **Latency measured.** Firmware DIAG on the rig: sample to command 70.5 ms (speed, register),
+  74.8 ms (speed, encoder), 78 ms (position). The position loop's 0.135 s paper estimate is
+  replaced by 0.11 s, fitted to the Kp 1.0 oscillation; the position-P error to the model halves.
+* **`motor_rig_analysis`**: every run of 2026-10-23/24 against the identified model (median error
+  5.5 % of the setpoint, 83 runs), repeatability over repeats, a refit (K 1.002, ramp 53.9 rpm/s:
+  no drift since 2026-10-11), the datasheet free speed (168 rpm) against the full-voltage runaways
+  (166.8 rpm), and Simulink against MATLAB (identical at the controller samples on the register).
+* Session reports regenerated; their safety section is now built from the data.
+
 ## 2026-10-24: all three rigs, physics from the real parts, one run register
 
 * **Temperature (`enr312_temp`) and water level (`enr312_water`)** mission controls, on a shared

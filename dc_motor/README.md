@@ -5,17 +5,17 @@ and speed with the Arduino, explore P, I and PI. Traceability:
 [`docs/requirements/COURSE_REQUIREMENTS.md`](../docs/requirements/COURSE_REQUIREMENTS.md) §2;
 every handout question: [`docs/experiments/dc_motor/COURSE_QUESTIONS.md`](../docs/experiments/dc_motor/COURSE_QUESTIONS.md).
 
-## Status (2026-10-23)
+## Status (2026-10-25)
 
 | Part | Status |
 |---|---|
 | Motor and drive documentation | DONE: [`HARDWARE_REFERENCE.md`](../docs/knowledge-base/HARDWARE_REFERENCE.md) |
 | Control-loop boundary | DECIDED: ED-M1 (Arduino P / I / PI around the drive's speed mode) |
 | Firmware [`firmware/motor_controller`](firmware/motor_controller) | ON THE RIG since 2026-10-11; host tests against an emulated RMCS-2303 |
-| Rig model | IDENTIFIED from the rig's own steps: K 1.000, ramp 53.4 rpm/s, Modbus latency 70 ms ([`rigModel`](../matlab/functions/+enr312/+motor/rigModel.m)) |
+| Rig model | IDENTIFIED from the rig's own steps: K 1.000, ramp 53.4 rpm/s; command latency MEASURED 70 ms (speed) and 110 ms (position). Refit on 2026-10-24: K 1.002, ramp 53.9: no drift in 13 days ([`rigModel`](../matlab/functions/+enr312/+motor/rigModel.m)) |
 | Mission control app [`enr312_motor`](../matlab/apps/enr312_motor/enr312_motor.m) | DONE; end-to-end test against the firmware emulator |
-| Course hardware experiments S3-2 … S3-12 | DONE on the rig, 2026-10-23 ([report](../results/reports/dc_motor/2026-10-23/REPORT.md)) |
-| Open | runaway stop at the start of run 2 of "S3-2/S3-4" (3 of 3); proposed firmware fix in the report |
+| Course hardware experiments S3-2 … S3-12 | DONE on the rig, 2026-10-23 and again 2026-10-24 ([report](../results/reports/dc_motor/2026-10-24/REPORT.md), [rig vs model, both sessions](../results/reports/dc_motor/2026-10-24/ANALYSIS.md)) |
+| Reverse runaway at RUN (OI-M12) | FIXED 2026-10-24: HOME at every RUN; 0 of 21 risky starts ran away on the rig, against 12 of 12 before ([analysis](../results/reports/dc_motor/2026-10-24/ANALYSIS.md)) |
 
 ## Quick start
 

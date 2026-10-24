@@ -50,6 +50,10 @@ Status of each: DECIDED on 2026-10-09 (the owner delegated the choices).
   speed loop = write SPD (17+17 chars) + read speed (17+15) ≈ 66 chars ≈ **69 ms**;
   position loop adds two more reads ≈ **135 ms**. Defaults: Ts = 0.10 s (speed) and
   0.15 s (position), labelled ESTIMATED until MOTOR-02 measures the real cycle time.
+  Measured on the rig 2026-10-25 (firmware DIAG, `hw_session_20261025-000324.log`): the whole
+  sample takes 70.5 ms (speed, drive register), 74.8 ms (speed, encoder) and 78 ms (position;
+  110 ms when the direction word is written too), with no overruns. The position loop reads one
+  register pair, not two: the 135 ms estimate was too high. Both sample times keep their margin.
 - Commands are magnitude + direction (register 14 unsigned, direction in register 2).
   A sign change costs an extra write.
 - A load disturbance is first fought by the drive's own speed loop. Outer-loop P vs PI

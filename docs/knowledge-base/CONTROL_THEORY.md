@@ -54,7 +54,7 @@ Load: the drive's own integral action rejects a constant load until the current 
 |---|---|---|
 | Outer-loop sample time, speed | 0.10 s | ESTIMATED from 9600-baud Modbus traffic (ED-M1) |
 | Outer-loop sample time, position | 0.15 s | ESTIMATED |
-| Command latency after the sample | 0.07 / 0.135 s | ESTIMATED |
+| Command latency after the sample | 0.07 / 0.11 s | MEASURED 2026-10-25: firmware sample-to-command 70.5 / 74.8 ms (speed, drive / encoder) and 78 ms (position); position fitted to the Kp 1.0 oscillation (0.11 s; the extra ~30 ms is inside the drive, UNVERIFIED). Was 0.135 s, a paper estimate |
 | Position resolution | 360/5200 = 0.0692° | VERIFIED_FROM_MANUAL |
 | Speed resolution (drive register) | 1 base rpm = 0.01 output rpm | VERIFIED_FROM_MANUAL (register units) |
 | Speed from counts at Ts (bare motor) | 360/5200/Ts/6 rpm per count → 1.15 rpm at 10 ms | Derived |
