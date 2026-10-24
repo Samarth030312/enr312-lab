@@ -1,37 +1,41 @@
-# Temperature control — bulb heater, DHT22, SSR-40DA, LCD, Arduino Uno
+# Temperature: bulb heater, DHT11, solid-state relay, LCD, Arduino Uno
 
-Course: SRC-001 p.17 (guideline), Assignment 2 (Simulink), lab report p.40.
+Course tasks (ENR312 TEMP handout): on-off control at 35, 45 and 55 °C, hysteresis, a moving
+average, P control and the Simulink model of Assignment 3. Every handout question:
+[`docs/experiments/temperature/COURSE_QUESTIONS.md`](../docs/experiments/temperature/COURSE_QUESTIONS.md).
 
-## Status (2026-10-09)
+## Status (2026-10-24)
 
 | Part | Status |
 |---|---|
-| MATLAB model (thermal + DHT + SSR + controllers) | DONE, parameters ESTIMATED |
-| `TemperatureControlApp` (simulation + hardware mode) | DONE; hardware mode not run on a board |
-| Simulink model `enr312_temperature.slx` (Assignment 2) | DONE; agrees with MATLAB (≤ 0.14 °C mean) |
-| Firmware `firmware/temperature_controller` | compiles (46 % RAM); **not run on hardware** |
-| Wiring + electrical guidelines | `docs/wiring/TEMPERATURE_WIRING.md` |
-| Experiment plans TEMP-01…07 | `docs/experiments/temperature/TEMP_EXPERIMENTS.md` |
-| Hardware runs | NOT STARTED |
+| Firmware [`firmware/temperature_controller`](firmware/temperature_controller) | compiles in CI on Windows, macOS, Linux; end-to-end test against an emulated DHT11, relay and box; **not yet run on the rig** |
+| Mission control [`enr312_temp`](../matlab/apps/enr312_temp/enr312_temp.m) | DONE: missions T1-T8 and LAB, physics panel, SIM / RIG / REF table, every rig run recorded |
+| Physics | from the bulb, the box and the room ([`physics.m`](../matlab/functions/+enr312/+temperature/physics.m)); values ASSUMED until measured at the bench |
+| Simulink [`enr312_temperature.slx`](../matlab/models/temperature) | built from the app's settings (OPEN IN SIMULINK) |
+| Rig runs | none yet: [`data/RUN_REGISTER.csv`](../data/RUN_REGISTER.csv) will list them as `TEMP-R0001_…` |
 
 ## Quick start
 
-```bash
-matlab -r "run('matlab/setup_enr312.m'); TemperatureControlApp"
-scripts/setup/upload temperature /dev/ttyACM0           # DHT22, parallel LCD
-scripts/setup/upload temperature /dev/ttyACM0 -DLCD_I2C -DDHT_KIND=DHT11
+```matlab
+cd <repo>/matlab
+enr312_start temperature
 ```
 
-## What the simulations show (ESTIMATED plant)
+Guide: [`docs/guide/TEMPERATURE.md`](../docs/guide/TEMPERATURE.md). Before the first rig run, type
+the bulb, box and room values into the physics panel and choose the LCD type (parallel or I2C).
 
-| Course task | Result |
-|---|---|
-| On-off at 35 / 45 / 55 °C | regulates within ~2 °C p-p, ~2.6 switchings/min |
-| Moving average N = 10 | **no effect** — 10 × 10 ms = 0.1 s, but the DHT22 only updates every 2 s |
-| Moving average N = 500 | fewer switchings, wider band (5 s of lag) |
-| P, Kp = 1 / 2 | never reaches the setpoint (e_ss = 15 / 9.6 °C) |
-| P, Kp = 50 / 100 | e_ss 1.3 / 0.7 °C, but ~1100 switchings/min: the PWM-into-zero-cross-SSR flicker |
-| P, Kp = 500 | behaves like on-off |
-| P with time-proportioning | same e_ss as Kp = 50, 20× less flicker |
+## Before any hardware run
 
-Theory check shown in the app: e_ss = (SP − T_amb) / (1 + Kp·η·P·R/255).
+The bulb runs on mains. [`docs/wiring/TEMPERATURE_WIRING.md`](../docs/wiring/TEMPERATURE_WIRING.md),
+[`docs/safety/EXPERIMENT_CHECKLIST.md`](../docs/safety/EXPERIMENT_CHECKLIST.md).
+
+## Layout
+
+```
+temperature/firmware/temperature_controller/   Arduino sketch (protocol v1, $TTEL telemetry)
+temperature/examples/lcd_hello_alignment/      the handout's LCD exercise
+temperature/tests/                             the sketch compiled for the PC (moving average, emulator)
+matlab/apps/enr312_temp/                       mission control
+matlab/functions/+enr312/+temperature/         physics, simulation, fit
+matlab/models/temperature/                     Simulink model and its builder
+```

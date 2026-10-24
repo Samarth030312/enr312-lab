@@ -1,0 +1,7 @@
+{
+  "run_id": "WATER-COURSE-SIM-20261024-120608",
+  "data_class": "SIMULATION",
+  "matlab": "26.1.0.3346908 (R2026a) Update 5",
+  "simulink": "26.1",
+  "params_status": "ASSUMED tank and pump (enr312.level.params)"
+}

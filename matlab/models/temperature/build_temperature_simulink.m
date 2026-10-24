@@ -26,7 +26,7 @@ function mdl = build_temperature_simulink(outDir)
     B('simulink/Math Operations/Gain', 'loss 1 over R', [700 110 750 140], 'Gain', '1/Rth', 'Orientation', 'left');
     B('simulink/Math Operations/Sum', 'minus ambient change', [770 110 790 140], 'Inputs', '+-', 'Orientation', 'left');
     B('simulink/Sources/Step', 'Ambient step', [820 180 850 210], 'Time', 'tAmb', 'Before', '0', 'After', 'ambStep');
-    B('simulink/Continuous/Transport Delay', 'Bulb to sensor', [850 45 900 75], 'DelayTime', 'delay');
+    B('simulink/Continuous/Transport Delay', 'Bulb to sensor', [850 45 900 75], 'DelayTime', 'delay', 'BufferSize', '4096');
     B('simulink/Continuous/Transfer Fcn', 'DHT body lag', [930 45 1000 75], 'Denominator', '[tauS 1]');
     B('simulink/Math Operations/Bias', 'plus ambient', [1030 45 1070 75], 'Bias', 'Ta');
     B('simulink/Discrete/Zero-Order Hold', 'DHT update', [1100 45 1130 75], 'SampleTime', 'perDHT');

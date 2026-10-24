@@ -71,4 +71,4 @@ Check: empty tank reads ~0 %, a ruler-measured level matches the reading within 
 2. Pump disconnected: `$CFG,1,ONOFF,30,80,50,20,0.5` and `$RUN,1`; the relay clicks on when the
    reading is below 30 %. Check whether your relay module is active-LOW (default) or active-HIGH
    (rebuild with `-DRELAY_ACTIVE_LOW=0`).
-3. Connect the pump; run the course on-off test (LEVEL-03) from `WaterLevelApp` → Hardware.
+3. Connect the pump; run W2 (on-off) from `enr312_start water`.

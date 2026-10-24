@@ -1,0 +1,171 @@
+{
+  "ma": {
+    "N": [
+      10,
+      500
+    ],
+    "span_s": [
+      0.1,
+      5
+    ],
+    "distinct_values_max": [
+      1,
+      6
+    ],
+    "delay_s": [
+      0.045,
+      2.495
+    ]
+  },
+  "maSim": [
+    {
+      "xCase": "On-off, 45 C",
+      "overshoot_C": 2,
+      "band_pp_C": 2,
+      "switches_per_min": 2.6
+    },
+    {
+      "xCase": "Moving average N = 10, 45 C",
+      "overshoot_C": 2,
+      "band_pp_C": 2,
+      "switches_per_min": 2.4
+    },
+    {
+      "xCase": "Moving average N = 500, 45 C",
+      "overshoot_C": 3,
+      "band_pp_C": 3,
+      "switches_per_min": 1.8
+    }
+  ],
+  "onoff": [
+    {
+      "setpoint_C": 35,
+      "swing_pp_C": 2,
+      "period_s": 37.736842105263165,
+      "switches_per_min": 2.6,
+      "duty": 0.10738617425504966
+    },
+    {
+      "setpoint_C": 45,
+      "swing_pp_C": 2,
+      "period_s": 45.000000000000007,
+      "switches_per_min": 2.64,
+      "duty": 0.3013799080061329
+    },
+    {
+      "setpoint_C": 55,
+      "swing_pp_C": 3,
+      "period_s": 38.368421052631582,
+      "switches_per_min": 3.04,
+      "duty": 0.49003399773348444
+    }
+  ],
+  "fopdt": {
+    "K_C_per_count": 0.22534094801524707,
+    "K_full_C": 57.461941743888005,
+    "tau_s": 169.48167139493492,
+    "theta_s": 12.237641676776516,
+    "rmse_C": 0.34845304510365993,
+    "true_K_full_C": 54,
+    "true_tau_s": 150,
+    "true_delay_s": 3,
+    "sensor_lag_s": 10
+  },
+  "cooling": {
+    "tau_s": 155.96972704224231
+  },
+  "ssr": {
+    "u": 128,
+    "fraction_on": 0.4925373134328358,
+    "beat_Hz": 9.8039215686274588
+  },
+  "simulinkFOPDT": [
+    {
+      "mode": "ONOFF",
+      "matlab_swing_C": 5,
+      "matlab_period_s": 62.636363636363647,
+      "matlab_switches_per_min": 1.96,
+      "simulink_swing_C": 5,
+      "simulink_period_s": 63,
+      "simulink_switches_per_min": 1.84
+    },
+    {
+      "mode": "HYST",
+      "matlab_swing_C": 6,
+      "matlab_period_s": 75.000000000000014,
+      "matlab_switches_per_min": 1.56,
+      "simulink_swing_C": 6,
+      "simulink_period_s": 75.888888888888886,
+      "simulink_switches_per_min": 1.52
+    }
+  ],
+  "Kplant": 0.21176470588235294,
+  "Perror": [
+    {
+      "Kp": 1,
+      "predicted_C": 12.378640776699029,
+      "sim_average_C": 12.107387520829477,
+      "sim_zero_cross_C": 13
+    },
+    {
+      "Kp": 2,
+      "predicted_C": 10.537190082644628,
+      "sim_average_C": 10.581373819663028,
+      "sim_zero_cross_C": 11
+    },
+    {
+      "Kp": 50,
+      "predicted_C": 1.2944162436548223,
+      "sim_average_C": 1.2795778559526028,
+      "sim_zero_cross_C": 1.2832808739122399
+    },
+    {
+      "Kp": 100,
+      "predicted_C": 0.67639257294429711,
+      "sim_average_C": 0.67598592853175177,
+      "sim_zero_cross_C": 0.67413441955193321
+    },
+    {
+      "Kp": 500,
+      "predicted_C": 0.14034122179416622,
+      "sim_average_C": 0.13719681540455753,
+      "sim_zero_cross_C": 0.13719681540455753
+    }
+  ],
+  "limitCycle": [
+    {
+      "delay_s": 0,
+      "zone_swing_pp_C": 1.3581622261414736
+    },
+    {
+      "delay_s": 2,
+      "zone_swing_pp_C": 2.8640835039197725
+    },
+    {
+      "delay_s": 4,
+      "zone_swing_pp_C": 3.6928087054686927
+    },
+    {
+      "delay_s": 8,
+      "zone_swing_pp_C": 5.42389285394988
+    },
+    {
+      "delay_s": 12,
+      "zone_swing_pp_C": 6.9028492526434775
+    }
+  ],
+  "PI": [
+    {
+      "mode": "P",
+      "mean_error_C": 1.2868251499666741,
+      "overshoot_C": 0,
+      "t_reach_s": 65
+    },
+    {
+      "mode": "PI",
+      "mean_error_C": 0,
+      "overshoot_C": 0,
+      "t_reach_s": 64
+    }
+  ]
+}

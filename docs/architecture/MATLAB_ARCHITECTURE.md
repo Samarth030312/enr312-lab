@@ -7,8 +7,10 @@ matlab/
 ├── setup_enr312.m                     path set-up only (repository folders only)
 ├── apps/
 │   ├── enr312_motor/enr312_motor.m    DC-motor mission control (this page)
-│   ├── TemperatureControlApp/         temperature (LabWindow layout)
-│   └── WaterLevelApp/                 water level (LabWindow layout)
+│   ├── enr312_temp/enr312_temp.m      temperature mission control (on enr312.ui.missionControl)
+│   ├── enr312_water/enr312_water.m    water-level mission control (on enr312.ui.missionControl)
+│   ├── TemperatureControlApp/         earlier temperature window (used by record_all_simulations)
+│   └── WaterLevelApp/                 earlier water-level window (used by record_all_simulations)
 ├── functions/+enr312/
 │   ├── doctor.m                       the checks behind enr312_doctor
 │   ├── +tools/                        Arduino toolchain on Windows, macOS, Linux:
@@ -17,7 +19,7 @@ matlab/
 │   ├── +io/                           SerialLink (protocol v1), arduinoPorts (fast, every OS),
 │   │                                  identifyPorts (USB ids via arduino-cli)
 │   ├── +motor/
-│   │   ├── missions.m                 the app's missions M1-M9 and LAB
+│   │   ├── missions.m                 the app's missions M1-M10 and LAB
 │   │   ├── hwExperiments.m            the course hardware experiments (presets = their runs)
 │   │   ├── rigModel.m                 the rig identified from its own steps (MEASURED)
 │   │   ├── identifiedSim.m            the Arduino's loop around that model
@@ -45,7 +47,7 @@ lab app, re-implemented here (no code is shared).
 | Area | Content |
 |---|---|
 | Top bar | mission · link chip (OFFLINE / RIG port) · state chip (SIMULATION, READY, RUNNING, STOPPED, FAULT) · firmware and drive id · ● REC · run clock · **ABORT** (also Esc and Space) |
-| Left | MISSION buttons M1-M9 and LAB; one-line purpose; preset (the runs of the mission's course experiment, or "▶▶ all runs"); SPEED / POSITION and DRIVE SPEED / ENCODER COUNTS toggles; controller law, Kp, Ki, command limit, Ts, setpoint profile, run length; ANTI-WINDUP toggle (M6); the identified rig model (K, ramp, latency, tau) with IDENTIFY FROM SELECTED RUN and RESET |
+| Left | MISSION buttons M1-M10 and LAB; one-line purpose; preset (the runs of the mission's course experiment, or "▶▶ all runs"); SPEED / POSITION and DRIVE SPEED / ENCODER COUNTS toggles; controller law, Kp, Ki, command limit, Ts, setpoint profile, run length; ANTI-WINDUP toggle (M6); the identified rig model (K, ramp, latency, tau) with IDENTIFY FROM SELECTED RUN and RESET |
 | Centre | the rig in 3-D: motor, gearbox, drive, Uno, battery and cables; the output disc turns with the measured or simulated angle, a cyan ring shows speed out of 180 rpm, a white tick the speed setpoint, a dashed radius the position setpoint, a wedge the last 80 ms of motion; four live numbers (speed, angle, command, error); one status line |
 | Right | two plots only: the controlled variable (setpoint dashed, simulation grey, rig cyan, replay violet, course model dotted amber) and the command u with its limits; a third, the static map, only in M2 |
 | Bottom | port, CONNECT, FLASH FIRMWARE, DRIVE CHECK, RUN ON RIG, STOP, CLEAR FAULT, PLAY SIMULATION · the SIM / RIG / REF table · LIVE SETPOINT (SEND, ±10, ZERO) · RUNS (filter, OVERLAY RUN, NEXT MISSION, PLAY, speed, scrub) |

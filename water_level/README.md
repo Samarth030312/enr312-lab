@@ -1,32 +1,41 @@
-# Water level control — tank, DC pump, HC-SR04, relay, Arduino Uno
+# Water level: tank, DC pump, HC-SR04, relay, Arduino Uno
 
-Course: SRC-001 p.23 (guideline), Assignment 3 (Simulink, Relay block), lab report p.40.
+Course tasks (ENR312 WATER handout): Lmin and Lmax, on-off control through the relay, fill and
+drain times, chattering, and the Simulink model with the Relay block of Assignment 3. Every
+handout question: [`docs/experiments/water_level/COURSE_QUESTIONS.md`](../docs/experiments/water_level/COURSE_QUESTIONS.md).
 
-## Status (2026-10-09)
+## Status (2026-10-24)
 
 | Part | Status |
 |---|---|
-| MATLAB model (tank, pump, ultrasonic sensor, guards) | DONE, tank/pump ASSUMED (course gives none) |
-| `WaterLevelApp` (simulation + hardware mode) | DONE; hardware mode not run on a board |
-| Simulink model `enr312_water_level.slx` with the **Relay block** (Assignment 3) | DONE; period within 1.6 %, P/PI e_ss identical |
-| Firmware `firmware/level_controller` | compiles (31 % RAM); **not run on hardware** |
-| Wiring + electrical guidelines | `docs/wiring/WATER_LEVEL_WIRING.md` |
-| Experiment plans LEVEL-01…07 | `docs/experiments/water_level/LEVEL_EXPERIMENTS.md` |
-| Hardware runs | NOT STARTED |
+| Firmware [`firmware/level_controller`](firmware/level_controller) | compiles in CI on Windows, macOS, Linux; end-to-end test against an emulated tank, sensor and relay; **not yet run on the rig** |
+| Mission control [`enr312_water`](../matlab/apps/enr312_water/enr312_water.m) | DONE: missions W1-W7 and LAB, physics panel, SIM / RIG / REF table, every rig run recorded |
+| Physics | from the tank, the outlet and the pump ([`physics.m`](../matlab/functions/+enr312/+level/physics.m)); values ASSUMED until measured at the bench |
+| Simulink [`enr312_water_level.slx`](../matlab/models/water_level) | Relay block, P / PI, open loop; built from the app's settings (OPEN IN SIMULINK) |
+| Rig runs | none yet: [`data/RUN_REGISTER.csv`](../data/RUN_REGISTER.csv) will list them as `WATER-R0001_…` |
 
 ## Quick start
 
-```bash
-matlab -r "run('matlab/setup_enr312.m'); WaterLevelApp"
-scripts/setup/upload level /dev/ttyACM0
+```matlab
+cd <repo>/matlab
+enr312_start water
 ```
 
-## What the simulations show (ASSUMED tank and pump)
+Guide: [`docs/guide/WATER.md`](../docs/guide/WATER.md). Measure the tank and the sensor height
+first: they set both the model and the firmware's level scale.
 
-| Case | Result |
-|---|---|
-| On-off 30–80 % (course) | cycles every ~4 min: fill ~3 min, drain ~1 min, 16 pump starts/h |
-| On-off 50–55 % | 184 starts/h — chattering |
-| Drain opened 1.2× | pump can only reach 67 %: Lmax unreachable, pump runs continuously |
-| P, Kp = 10 / 50 | e_ss 17 % / 3.9 % |
-| PI | e_ss ≈ 0, also after the drain step |
+## Before any hardware run
+
+Keep the pump supply and the mains away from the water. [`docs/wiring/WATER_LEVEL_WIRING.md`](../docs/wiring/WATER_LEVEL_WIRING.md),
+[`docs/safety/EXPERIMENT_CHECKLIST.md`](../docs/safety/EXPERIMENT_CHECKLIST.md). Calibration sheet:
+[`calibration_template.csv`](../docs/experiments/water_level/calibration_template.csv).
+
+## Layout
+
+```
+water_level/firmware/level_controller/   Arduino sketch (protocol v1, $LTEL telemetry)
+water_level/tests/                       the sketch compiled for the PC against an emulated tank
+matlab/apps/enr312_water/                mission control
+matlab/functions/+enr312/+level/         physics, simulation, cycle analysis, calibration
+matlab/models/water_level/               Simulink model and its builder
+```

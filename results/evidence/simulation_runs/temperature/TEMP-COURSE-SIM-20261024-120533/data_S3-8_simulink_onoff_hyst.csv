@@ -1,0 +1,3 @@
+mode,matlab_swing_C,matlab_period_s,matlab_switches_per_min,simulink_swing_C,simulink_period_s,simulink_switches_per_min
+ONOFF,5,62.6363636363636,1.96,5,63,1.84
+HYST,6,75,1.56,6,75.8888888888889,1.52

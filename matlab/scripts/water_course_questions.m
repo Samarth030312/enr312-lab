@@ -222,7 +222,7 @@ function out = water_course_questions()
          '(3) ultrasonic noise from ripples and the 3 mm resolution (static std, S3-2); (4) outflow is not constant (fall ' ...
          'rate vs level); (5) speed of sound vs room temperature (S3-1). PENDING-HW.']);
     say('');
-    say('## Pending hardware runs (WaterLevelApp -> Hardware)');
+    say('## Pending hardware runs (enr312_water, on the rig)');
     say('Calibration at 5+ ruler levels; On-off 30-80 % (3+ cycles); narrow band 50-55 %; drain-opened run; P and PI with the MOSFET wiring (S3-8 on hardware is optional: the handout asks for simulation).');
 
     writelines(string(md), fullfile(D, 'summary.md'));

@@ -67,7 +67,7 @@ recorded, the run clock, and **ABORT**. ABORT, Esc and Space cut motor power at 
 
 **Left: what you are simulating.**
 
-- **MISSION:** M1-M9 follow the handout; LAB is free use. The line under the buttons says what
+- **MISSION:** M1-M9 follow the handout, M10 opens the motor itself (physical model); LAB is free use. The line under the buttons says what
   the mission is about.
 - **Preset:** the runs of the mission's course hardware experiment, so the simulation and the
   rig run exactly the same thing. "▶▶ all runs" plays the whole series on the rig.
@@ -211,6 +211,11 @@ fraction of an rpm, so there is no dead zone to stop short in. **The rig ends wi
 ### M8 · Position I and M9 · Position PI
 Two integrators (the drive's speed-to-angle and the controller's) make I alone oscillate around
 the target; PI adds a slow tail and overshoot for little gain over P on this rig.
+
+### M10 · Armature
+*What is inside the drive's loop?* The bare RMCS-5032 driven by a voltage, built from the
+datasheet values in the physics panel: speed and armature current, a PID of your own, a load
+torque and extra inertia under DISTURBANCE. Simulation only; on the rig the drive closes this loop.
 
 ### LAB · Free
 Any loop, any law, any profile. On the rig, LIVE SETPOINT changes the speed or the angle while

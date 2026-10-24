@@ -62,7 +62,7 @@ Most SSR-40DA units are **zero-crossing**: they only switch at mains zero crossi
 at 50 Hz). With the course's `analogWrite(9, u)` (490 Hz PWM) the bulb therefore gets a
 pseudo-random pattern of half-cycles — the "intense flickering" the guideline asks about. The
 firmware's `TPROP` mode (time-proportioning, 2 s window) gives the same average power with far
-less flicker. Both are simulated in `TemperatureControlApp`.
+less flicker. Both are simulated in `enr312_temp`.
 
 ## 5. Bring-up order
 
@@ -72,4 +72,4 @@ less flicker. Both are simulated in `TemperatureControlApp`.
 3. Type `$CFG,1,ONOFF,35,1,10,50,2000` then `$RUN,1`: the SSR input LED should light (bulb not
    connected yet). `$STOP,1` turns it off.
 4. Close the enclosure, plug in mains, repeat at 35 °C, watching the first heating continuously.
-5. Run TEMP-01 … 07 from `TemperatureControlApp` → Hardware.
+5. Run the missions from `enr312_start temperature` (T1, the heating curve, first).

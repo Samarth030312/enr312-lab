@@ -54,7 +54,7 @@ function mdl = build_level_simulink(outDir)
     B('simulink/Sources/Constant', 'modeSel', [400 100 440 120], 'Value', 'modeSel');
     B('simulink/Signal Routing/Multiport Switch', 'Controller select', [460 60 490 240], 'Inputs', '3');
     B('simulink/Sources/Constant', 'Open-loop pump flow', [380 220 440 240], 'Value', 'Qol');
-    B('simulink/Continuous/Transport Delay', 'Relay + pipe delay', [510 115 560 145], 'DelayTime', 'delay');
+    B('simulink/Continuous/Transport Delay', 'Relay + pipe delay', [510 115 560 145], 'DelayTime', 'delay', 'BufferSize', '4096');
     B('simulink/Continuous/Transfer Fcn', 'Pump spin-up', [570 115 610 145], 'Denominator', '[tauP 1]');
     B('simulink/Sinks/Out1', 'level_true_pct', [880 110 910 125]);
     B('simulink/Sinks/Out1', 'level_measured_pct', [1010 50 1040 65], 'Port', '2');

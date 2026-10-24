@@ -254,7 +254,7 @@ function out = temperature_course_questions()
          'mean reading is 45 C. Without clamping the integral would grow during the long warm-up at u = 255 and cause a ' ...
          'large overshoot; with clamping it starts integrating only once u leaves 255. Hardware: preset "PI Kp = 50, Ki = 0.5" (PENDING-HW).']);
     say('');
-    say('## Pending hardware runs (TemperatureControlApp -> Hardware)');
+    say('## Pending hardware runs (enr312_temp, on the rig)');
     say('Heater step (K, tau, theta) first; then On-off 35/45/55 C, hysteresis +/-0.5 C, MA N = 10 and 500, P Kp 1/2/50/100/500, PI; check the 55 C readings against a thermometer.');
 
     writelines(string(md), fullfile(D, 'summary.md'));

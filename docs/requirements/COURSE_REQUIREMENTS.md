@@ -57,7 +57,7 @@ reproduce the course's set-up in simulation. Full list: `../knowledge-base/OPEN_
 | R-L1 | Identify Lmin / Lmax (task 1) | 30 % / 80 % defaults, adjustable | — | DONE |
 | R-L2 | Tank, DC pump, sensors, relay module (task 2) | HC-SR04 + relay (+ optional MOSFET), `docs/wiring/WATER_LEVEL_WIRING.md` | LEVEL-02 calibration | DOCUMENTED |
 | R-L3 | ON-OFF program (task 3) | `water_level/firmware/level_controller` ONOFF | sim, LEVEL-03 | firmware DONE |
-| R-L4 | Test cycles, record fill time, switching frequency, chattering (tasks 4–5) | `WaterLevelApp` metrics | `test_level_model` | SIM-DONE |
+| R-L4 | Test cycles, record fill time, switching frequency, chattering (tasks 4–5) | `enr312_water` metrics (W2) | `test_level_model` | SIM-DONE |
 | R-L5 | Simulink tank model, Relay block, Lmin 30 / Lmax 80, plot level (task 6) | `enr312_water_level.slx` | `test_simulink_temperature_level` | DONE |
 | R-L6 | Compare hardware and Simulink (task 7) | hardware mode overlays the prediction | LEVEL-06 | NOT STARTED (hardware) |
 | R-L7 | Questions 1–25 (P/I/D, windup, noise) | P / PI modes, clamping anti-windup; `docs/experiments/water_level/COURSE_QUESTIONS.md` | sim, review | DONE (reference answers) |
